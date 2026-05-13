@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Award,
+  BarChart3,
   BookOpenCheck,
   CalendarDays,
   ClipboardList,
@@ -29,6 +30,7 @@ export default function DocenteDashboard({
   onOpenAsistencia,
   onOpenCronograma,
   onOpenMensajes,
+  onOpenReportes,
 }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,7 @@ export default function DocenteDashboard({
     { label: "Calendario", onClick: onOpenCronograma },
     { label: "Asistencia", onClick: onOpenAsistencia },
     { label: "Evaluaciones", onClick: onOpenEvaluaciones },
+    { label: "Reportes", onClick: onOpenReportes },
     { label: "Mensajes", onClick: onOpenMensajes },
     { label: "Documentos", onClick: () => document.getElementById("docente-entregas")?.scrollIntoView({ behavior: "smooth" }) },
     { label: "Biblioteca", onClick: () => document.getElementById("docente-entregas")?.scrollIntoView({ behavior: "smooth" }) },
@@ -144,6 +147,7 @@ export default function DocenteDashboard({
         <section className="teacher-quick-grid">
           <button type="button" onClick={onOpenEvaluaciones}><Star size={22} strokeWidth={1.9} /> Evaluaciones</button>
           <button type="button" onClick={onOpenAsistencia}><CalendarDays size={22} strokeWidth={1.9} /> Asistencia</button>
+          <button type="button" onClick={onOpenReportes}><BarChart3 size={22} strokeWidth={1.9} /> Reportes</button>
           <button type="button" onClick={() => document.getElementById("docente-entregas")?.scrollIntoView({ behavior: "smooth" })}><FileCheck2 size={22} strokeWidth={1.9} /> Revisar entregas</button>
           <button type="button" onClick={() => document.getElementById("docente-clases")?.scrollIntoView({ behavior: "smooth" })}><CalendarDays size={22} strokeWidth={1.9} /> Mis clases</button>
         </section>

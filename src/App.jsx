@@ -32,7 +32,9 @@ import EntregasTareaAdmin from "./modules/especialidades/EntregasTareaAdmin";
 import EntregaTareaRecurso from "./modules/especialidades/EntregaTareaRecurso";
 import MiCampus from "./modules/recurso/MiCampus";
 import MiAsistencia from "./modules/recurso/MiAsistencia";
+import ExpedienteAcademico from "./modules/recurso/ExpedienteAcademico";
 import RecursosAdmin from "./modules/admin/RecursosAdmin";
+import ReportesAcademicos from "./modules/admin/ReportesAcademicos";
 import DocenteDashboard from "./modules/docente/DocenteDashboard";
 import EvaluacionesDocente from "./modules/docente/EvaluacionesDocente";
 import AsistenciaDocente from "./modules/docente/AsistenciaDocente";
@@ -1954,6 +1956,16 @@ export default function App() {
       return;
     }
 
+    if (label === "Reportes") {
+      setVista("reportesAcademicos");
+      return;
+    }
+
+    if (label === "Expediente") {
+      setVista("expedienteAcademico");
+      return;
+    }
+
     if (label === "Documentos" || label === "Biblioteca") {
       openDashboardPortal("biblioteca");
       return;
@@ -1965,12 +1977,17 @@ export default function App() {
   }
 
   function getCampusMenuItems() {
+    const roleItem = isRecurso(profile)
+      ? { label: "Expediente", onClick: () => handleSidebarNavigation("Expediente") }
+      : { label: "Reportes", onClick: () => handleSidebarNavigation("Reportes") };
+
     return [
       { label: "Inicio", onClick: () => handleSidebarNavigation("Inicio") },
       { label: "Especializaciones", onClick: () => handleSidebarNavigation("Especializaciones") },
       { label: "Calendario", onClick: () => handleSidebarNavigation("Calendario") },
       { label: "Asistencia", onClick: () => handleSidebarNavigation("Asistencia") },
       { label: "Evaluaciones", onClick: () => handleSidebarNavigation("Evaluaciones") },
+      roleItem,
       { label: "Mensajes", onClick: () => handleSidebarNavigation("Mensajes") },
       { label: "Notificaciones", onClick: () => openDashboardPortal("inicio") },
       { label: "Documentos", onClick: () => handleSidebarNavigation("Documentos") },
@@ -1984,6 +2001,8 @@ export default function App() {
     if (vista === "asistencia" || vista === "docenteAsistencia" || vista === "miAsistencia") return "Asistencia";
     if (vista === "docenteEvaluaciones" || vista === "crearEvaluacion") return "Evaluaciones";
     if (vista === "mensajes") return "Mensajes";
+    if (vista === "reportesAcademicos") return "Reportes";
+    if (vista === "expedienteAcademico") return "Expediente";
     return defaultItem;
   }
 
@@ -2347,6 +2366,46 @@ export default function App() {
     );
   }
 
+  if (vista === "expedienteAcademico" && isRecurso(profile)) {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => setVista("dashboard")}
+        onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
+      >
+        <ExpedienteAcademico
+          session={session}
+          profile={profile}
+          onBack={() => setVista("dashboard")}
+          onAvatarUpdated={(updatedProfile) => {
+            setProfile((currentProfile) => ({
+              ...(currentProfile || {}),
+              ...(updatedProfile || {}),
+            }));
+          }}
+        />
+      </EspecialidadAdminModuleLayout>
+    );
+  }
+
+  if (vista === "reportesAcademicos" && (isAdminOrJefe(profile) || isDocente(profile))) {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => setVista("dashboard")}
+        onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
+      >
+        <ReportesAcademicos onBack={() => setVista("dashboard")} />
+      </EspecialidadAdminModuleLayout>
+    );
+  }
+
   if (especialidadActiva) {
     return (
       <>
@@ -2423,6 +2482,7 @@ export default function App() {
         onOpenAsistencia={() => setVista("docenteAsistencia")}
         onOpenCronograma={() => setVista("cronogramaAcademico")}
         onOpenMensajes={() => setVista("mensajes")}
+        onOpenReportes={() => setVista("reportesAcademicos")}
       />
     );
   }
@@ -2448,6 +2508,7 @@ export default function App() {
         onOpenAsistencia={() => setVista("miAsistencia")}
         onOpenCronograma={() => setVista("cronogramaAcademico")}
         onOpenMensajes={() => setVista("mensajes")}
+        onOpenExpediente={() => setVista("expedienteAcademico")}
       />
     );
   }

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ClipboardList,
   FileCheck2,
+  GraduationCap,
   UploadCloud,
 } from "lucide-react";
 import CampusLayout from "../../components/campus/CampusLayout";
@@ -61,6 +62,7 @@ export default function MiCampus({
   onOpenAsistencia,
   onOpenCronograma,
   onOpenMensajes,
+  onOpenExpediente,
 }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -113,6 +115,7 @@ export default function MiCampus({
     { label: "Calendario", onClick: onOpenCronograma },
     { label: "Asistencia", onClick: onOpenAsistencia },
     { label: "Evaluaciones", onClick: () => document.getElementById("mi-campus-notas")?.scrollIntoView({ behavior: "smooth" }) },
+    { label: "Expediente", onClick: onOpenExpediente },
     { label: "Mensajes", onClick: onOpenMensajes },
     { label: "Documentos", onClick: () => document.getElementById("mi-campus-evidencias")?.scrollIntoView({ behavior: "smooth" }) },
     { label: "Biblioteca", onClick: () => document.getElementById("mi-campus-evidencias")?.scrollIntoView({ behavior: "smooth" }) },
@@ -208,6 +211,10 @@ export default function MiCampus({
               <button type="button" onClick={() => document.getElementById("mi-campus-evidencias")?.scrollIntoView({ behavior: "smooth" })}>
                 <FileCheck2 size={22} strokeWidth={1.9} />
                 <span>Mis evidencias</span>
+              </button>
+              <button type="button" onClick={onOpenExpediente}>
+                <GraduationCap size={22} strokeWidth={1.9} />
+                <span>Mi expediente</span>
               </button>
             </section>
 
