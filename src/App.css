@@ -2147,6 +2147,133 @@ button { font: inherit; }
   width: auto;
 }
 
+/* ===================== DOCENTE ===================== */
+.teacher-dashboard-page {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.teacher-hero-card,
+.teacher-stat-card,
+.teacher-panel,
+.teacher-quick-grid button {
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  background: #ffffff;
+  box-shadow: 0 16px 35px rgba(15, 64, 150, 0.08);
+}
+
+.teacher-hero-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  border-radius: 24px;
+  padding: 26px;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(15, 118, 110, 0.12), transparent 28%),
+    linear-gradient(135deg, #ffffff, #f8fbff);
+}
+
+.teacher-hero-card span {
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.teacher-hero-card h2 {
+  margin: 10px 0 8px;
+  color: #102a63;
+  font-size: clamp(30px, 3.4vw, 48px);
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.teacher-hero-card p {
+  max-width: 720px;
+  margin: 0;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 760;
+  line-height: 1.5;
+}
+
+.teacher-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.teacher-stat-card {
+  min-height: 104px;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 13px;
+  align-items: center;
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.teacher-stat-card small,
+.teacher-stat-card strong {
+  display: block;
+}
+
+.teacher-stat-card small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.teacher-stat-card strong {
+  margin-top: 5px;
+  color: #102a63;
+  font-size: 26px;
+  font-weight: 950;
+}
+
+.teacher-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.teacher-quick-grid button {
+  min-height: 86px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 18px;
+  color: #102a63;
+  padding: 16px;
+  font-size: 14px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.teacher-quick-grid button svg {
+  color: #1d4ed8;
+}
+
+.teacher-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.teacher-panel {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  border-radius: 22px;
+  padding: 20px;
+}
+
 /* ===================== PORTAL ACADEMICO PRINCIPAL ===================== */
 .cu-portal-shell {
   min-height: 100vh;
@@ -3875,9 +4002,16 @@ button { font: inherit; }
   }
   .resources-admin-actions,
   .resources-toolbar,
-  .resources-modal-head {
+  .resources-modal-head,
+  .teacher-hero-card {
     align-items: flex-start;
     flex-direction: column;
+  }
+  .teacher-hero-card,
+  .teacher-stats-grid,
+  .teacher-quick-grid,
+  .teacher-grid {
+    grid-template-columns: 1fr;
   }
   .cu-portal-shell { grid-template-columns: 1fr; }
   .cu-portal-sidebar {

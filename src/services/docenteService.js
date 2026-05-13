@@ -1,0 +1,178 @@
+import { supabase } from "../supabaseClient";
+import { getExpedientesByEspecialidad } from "./especialidadService";
+import { reviewEntregaTarea } from "./clasesTareasService";
+
+function todayDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function estadoFromNota(nota) {
+  return Number(nota) >= 7 ? "Aprobado" : "Reprobado";
+}
+
+function porcentajeFromNota(nota) {
+  const n = Number(nota);
+  return Number.isFinite(n) ? Number((n * 10).toFixed(2)) : 0;
+}
+
+async function getEspecialidades() {
+  const { data, error } = await supabase
+    .from("especialidades")
+    .select("id, nombre, descripcion, activa")
+    .order("nombre", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getMisClases(profile = null) {
+  const docenteName = profile?.nombre || "";
+  let query = supabase
+    .from("especialidad_clases_virtuales")
+    .select("*")
+    .gte("fecha", todayDate())
+    .order("fecha", { ascending: true })
+    .order("hora_inicio", { ascending: true });
+
+  if (docenteName) {
+    query = query.ilike("docente", `%${docenteName}%`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.warn("[Campus UCI] No se pudieron cargar clases por docente; usando vista general:", error);
+    const fallback = await supabase
+      .from("especialidad_clases_virtuales")
+      .select("*")
+      .gte("fecha", todayDate())
+      .order("fecha", { ascending: true })
+      .order("hora_inicio", { ascending: true });
+    if (fallback.error) throw fallback.error;
+    return fallback.data || [];
+  }
+
+  return data || [];
+}
+
+export async function getMisTareas() {
+  const { data, error } = await supabase
+    .from("especialidad_tareas")
+    .select("*")
+    .order("fecha_limite", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getEntregasPendientes() {
+  const { data, error } = await supabase
+    .from("especialidad_tarea_entregas")
+    .select(`
+      *,
+      profiles:profile_id (
+        id,
+        nombre,
+        correo,
+        cum,
+        avatar_url
+      )
+    `)
+    .eq("estado", "entregada")
+    .order("fecha_entrega", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export async function getNotasRecientes() {
+  const { data, error } = await supabase
+    .from("especialidad_notas")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(8);
+
+  if (error) {
+    console.warn("[Campus UCI] No se pudieron cargar notas recientes:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function getDocenteDashboard(profile = null) {
+  const [especialidades, clases, tareas, entregasPendientes, notasRecientes] = await Promise.all([
+    getEspecialidades(),
+    getMisClases(profile),
+    getMisTareas(),
+    getEntregasPendientes(),
+    getNotasRecientes(),
+  ]);
+
+  return {
+    especialidades,
+    clases,
+    tareas,
+    entregasPendientes,
+    notasRecientes,
+    stats: {
+      proximasClases: clases.length,
+      tareas: tareas.length,
+      pendientesRevision: entregasPendientes.length,
+      evaluaciones: notasRecientes.length,
+    },
+  };
+}
+
+export async function reviewEntrega(id, form) {
+  return reviewEntregaTarea(id, form);
+}
+
+export async function getRecursosEvaluacion(especialidadId) {
+  if (!especialidadId) return [];
+  return getExpedientesByEspecialidad(especialidadId);
+}
+
+export async function createEvaluacion(payload) {
+  return registrarNota(payload);
+}
+
+export async function registrarNota({
+  especialidadId,
+  recursoId,
+  area,
+  actividad,
+  nota,
+  observaciones,
+  createdBy,
+}) {
+  if (!especialidadId) throw new Error("Seleccioná una especialidad.");
+  if (!recursoId) throw new Error("Seleccioná un recurso.");
+  if (!actividad?.trim()) throw new Error("Indicá el nombre de la evaluación.");
+
+  const numericNota = Number(nota);
+  if (!Number.isFinite(numericNota) || numericNota < 0 || numericNota > 10) {
+    throw new Error("La nota debe estar entre 0 y 10.");
+  }
+
+  const payload = {
+    especialidad_id: especialidadId,
+    recurso_id: recursoId,
+    area: area?.trim() || "Evaluación docente",
+    actividad: actividad.trim(),
+    nota: numericNota,
+    porcentaje: porcentajeFromNota(numericNota),
+    estado: estadoFromNota(numericNota),
+    observaciones: observaciones?.trim() || null,
+    created_by: createdBy || null,
+  };
+
+  const { data, error } = await supabase
+    .from("especialidad_notas")
+    .insert(payload)
+    .select("*")
+    .single();
+
+  if (error) throw error;
+  return data;
+}

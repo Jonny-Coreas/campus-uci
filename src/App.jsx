@@ -32,8 +32,10 @@ import EntregasTareaAdmin from "./modules/especialidades/EntregasTareaAdmin";
 import EntregaTareaRecurso from "./modules/especialidades/EntregaTareaRecurso";
 import MiCampus from "./modules/recurso/MiCampus";
 import RecursosAdmin from "./modules/admin/RecursosAdmin";
+import DocenteDashboard from "./modules/docente/DocenteDashboard";
+import EvaluacionesDocente from "./modules/docente/EvaluacionesDocente";
 import IndexCarpetaAcademica from "./CarpetaAcademica/IndexCarpetaAcademica";
-import { isAdmin, isAdminOrJefe, normalizeRole } from "./auth/roles";
+import { isAdmin, isAdminOrJefe, isDocente, isRecurso, normalizeRole } from "./auth/roles";
 import {
   getCurrentSession,
   onAuthStateChange,
@@ -2074,6 +2076,24 @@ export default function App() {
     );
   }
 
+  if (vista === "docenteEvaluaciones" && isDocente(profile)) {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => setVista("dashboard")}
+        onLogout={handleLogout}
+      >
+        <EvaluacionesDocente
+          session={session}
+          profile={profile}
+          especialidades={especialidades}
+          onBack={() => setVista("dashboard")}
+        />
+      </EspecialidadAdminModuleLayout>
+    );
+  }
+
   if (especialidadActiva) {
     return (
       <>
@@ -2118,7 +2138,24 @@ export default function App() {
     );
   }
 
-  if (!isAdminOrJefe(profile)) {
+  if (isDocente(profile)) {
+    return (
+      <DocenteDashboard
+        session={session}
+        profile={profile}
+        onLogout={handleLogout}
+        onAvatarUpdated={(updatedProfile) => {
+          setProfile((currentProfile) => ({
+            ...(currentProfile || {}),
+            ...(updatedProfile || {}),
+          }));
+        }}
+        onOpenEvaluaciones={() => setVista("docenteEvaluaciones")}
+      />
+    );
+  }
+
+  if (isRecurso(profile)) {
     return (
       <MiCampus
         session={session}
