@@ -38,7 +38,13 @@ function mapTareaToForm(row) {
   };
 }
 
-export default function TareasEspecialidad({ especialidad = null, onBack = null }) {
+export default function TareasEspecialidad({
+  especialidad = null,
+  canManageAcademic = false,
+  onBack = null,
+  onOpenEntregas = null,
+  onOpenEntregaRecurso = null,
+}) {
   const [rows, setRows] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
@@ -181,6 +187,7 @@ export default function TareasEspecialidad({ especialidad = null, onBack = null 
       </section>
 
       <section className="academic-module-grid">
+        {canManageAcademic ? (
         <article className="academic-panel">
           <div className="academic-panel-head">
             <div>
@@ -249,6 +256,19 @@ export default function TareasEspecialidad({ especialidad = null, onBack = null 
             </form>
           ) : null}
         </article>
+        ) : (
+          <article className="academic-panel">
+            <div className="academic-panel-head compact">
+              <div>
+                <span>Entrega de evidencias</span>
+                <h3>Mis tareas asignadas</h3>
+              </div>
+            </div>
+            <div className="cu-empty">
+              Seleccioná una tarea del listado y usá “Entregar tarea” para subir tu evidencia.
+            </div>
+          </article>
+        )}
 
         <article className="academic-panel">
           <div className="academic-panel-head compact">
@@ -312,15 +332,24 @@ export default function TareasEspecialidad({ especialidad = null, onBack = null 
                     <td><span className={`academic-status ${row.estado}`}>{row.estado}</span></td>
                     <td>
                       <div className="academic-row-actions">
-                        <button type="button" onClick={() => startEdit(row)}>Editar</button>
-                        <button
-                          type="button"
-                          className="danger"
-                          onClick={() => handleDelete(row)}
-                          disabled={deletingId === row.id}
-                        >
-                          {deletingId === row.id ? "Eliminando..." : "Eliminar"}
-                        </button>
+                        {canManageAcademic ? (
+                          <>
+                            <button type="button" onClick={() => onOpenEntregas?.(row)}>Ver entregas</button>
+                            <button type="button" onClick={() => startEdit(row)}>Editar</button>
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() => handleDelete(row)}
+                              disabled={deletingId === row.id}
+                            >
+                              {deletingId === row.id ? "Eliminando..." : "Eliminar"}
+                            </button>
+                          </>
+                        ) : (
+                          <button type="button" onClick={() => onOpenEntregaRecurso?.(row)}>
+                            Entregar tarea
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

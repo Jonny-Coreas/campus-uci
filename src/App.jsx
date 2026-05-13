@@ -28,6 +28,10 @@ import AvatarUpload from "./components/campus/AvatarUpload";
 import EspecialidadDrive from "./modules/especialidades/EspecialidadDrive";
 import ClasesVirtuales from "./modules/especialidades/ClasesVirtuales";
 import TareasEspecialidad from "./modules/especialidades/TareasEspecialidad";
+import EntregasTareaAdmin from "./modules/especialidades/EntregasTareaAdmin";
+import EntregaTareaRecurso from "./modules/especialidades/EntregaTareaRecurso";
+import MiCampus from "./modules/recurso/MiCampus";
+import RecursosAdmin from "./modules/admin/RecursosAdmin";
 import IndexCarpetaAcademica from "./CarpetaAcademica/IndexCarpetaAcademica";
 import { isAdmin, isAdminOrJefe, normalizeRole } from "./auth/roles";
 import {
@@ -516,8 +520,7 @@ function ExpedientesEspecialidad({
       description: "Crea actividades académicas, fechas límite y puntajes por especialidad.",
       icon: ClipboardList,
       tone: "green",
-      action: canManageAcademic ? onOpenTareas : null,
-      locked: !canManageAcademic,
+      action: onOpenTareas,
     },
     {
       title: "Asistencia",
@@ -1161,7 +1164,7 @@ function AsignarEspecialidad({
 }
 
 
-function Dashboard({ session, profile, especialidades, loadingData, dataError, onLogout, onOpenEspecialidad, onOpenRegistrar, onOpenAsignar, onOpenCrearEvaluacion, onExportReporte, onProfileUpdated }) {
+function Dashboard({ session, profile, especialidades, loadingData, dataError, onLogout, onOpenEspecialidad, onOpenRegistrar, onOpenAsignar, onOpenCrearEvaluacion, onOpenRecursosAdmin, onExportReporte, onProfileUpdated }) {
   const [portalView, setPortalView] = useState("inicio");
   const displayName =
     profile?.nombre ||
@@ -1187,6 +1190,7 @@ function Dashboard({ session, profile, especialidades, loadingData, dataError, o
   const portalViews = {
     inicio: "Inicio",
     especializaciones: "Especializaciones",
+    recursos: "Recursos Académicos",
     calendario: "Calendario",
     asistencia: "Asistencia",
     evaluaciones: "Evaluaciones",
@@ -1280,6 +1284,12 @@ function Dashboard({ session, profile, especialidades, loadingData, dataError, o
       action: () => openPortalView("especializaciones"),
     },
     {
+      title: "Recursos Académicos",
+      description: "Usuarios recurso con login, CUM, especialidad y progreso.",
+      icon: "autogestion",
+      action: onOpenRecursosAdmin,
+    },
+    {
       title: "Tutoriales",
       description: "Recursos de apoyo para el uso de la plataforma.",
       icon: "tutoriales",
@@ -1319,6 +1329,7 @@ function Dashboard({ session, profile, especialidades, loadingData, dataError, o
   const campusMenuItems = [
     { label: "Inicio", icon: "⌂", onClick: () => openPortalView("inicio") },
     { label: "Especializaciones", icon: "▣", onClick: () => openPortalView("especializaciones") },
+    { label: "Recursos Académicos", icon: UserRoundPlus, onClick: onOpenRecursosAdmin },
     { label: "Calendario", icon: "◷", onClick: () => openPortalView("calendario") },
     { label: "Asistencia", icon: "☑", onClick: () => openPortalView("asistencia") },
     { label: "Evaluaciones", icon: "◎", onClick: () => openPortalView("evaluaciones") },
@@ -1636,6 +1647,7 @@ export default function App() {
   const [dataError, setDataError] = useState("");
   const [vista, setVista] = useState("dashboard");
   const [cursoEvaluacionActivo, setCursoEvaluacionActivo] = useState(null);
+  const [tareaActiva, setTareaActiva] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -1660,6 +1672,7 @@ export default function App() {
         setUsuariosEspecialidad([]);
         setVista("dashboard");
         setCursoEvaluacionActivo(null);
+        setTareaActiva(null);
       }
     });
 
@@ -1740,6 +1753,7 @@ export default function App() {
 
     setEspecialidadActiva(especialidad);
     setExpedienteActivo(null);
+    setTareaActiva(null);
     setUsuariosEspecialidad([]);
     setUsuariosEspecialidadError("");
     setLoadingUsuariosEspecialidad(true);
@@ -1816,6 +1830,7 @@ export default function App() {
     setEspecialidadActiva(null);
     setUsuariosEspecialidad([]);
     setVista("dashboard");
+    setTareaActiva(null);
   }
 
   if (sessionLoading) return <div className="cu-loading">Cargando sesión...</div>;
@@ -1844,6 +1859,23 @@ export default function App() {
         onBack={() => setVista("dashboard")}
         onLogout={handleLogout}
       />
+    );
+  }
+
+  if (vista === "recursosAdmin" && isAdminOrJefe(profile)) {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => setVista("dashboard")}
+        onLogout={handleLogout}
+      >
+        <RecursosAdmin
+          session={session}
+          especialidades={especialidades}
+          onBack={() => setVista("dashboard")}
+        />
+      </EspecialidadAdminModuleLayout>
     );
   }
 
@@ -1970,7 +2002,73 @@ export default function App() {
       >
         <TareasEspecialidad
           especialidad={especialidadActiva}
+          canManageAcademic={isAdminOrJefe(profile)}
+          onOpenEntregas={(tarea) => {
+            setTareaActiva(tarea);
+            setVista("entregasTareaAdmin");
+          }}
+          onOpenEntregaRecurso={(tarea) => {
+            setTareaActiva(tarea);
+            setVista("entregaTareaRecurso");
+          }}
           onBack={() => setVista("dashboard")}
+        />
+      </EspecialidadAdminModuleLayout>
+    );
+  }
+
+  if (vista === "tareasEspecialidad" && especialidadActiva) {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => setVista("dashboard")}
+        onLogout={handleLogout}
+      >
+        <TareasEspecialidad
+          especialidad={especialidadActiva}
+          canManageAcademic={false}
+          onOpenEntregaRecurso={(tarea) => {
+            setTareaActiva(tarea);
+            setVista("entregaTareaRecurso");
+          }}
+          onBack={() => setVista("dashboard")}
+        />
+      </EspecialidadAdminModuleLayout>
+    );
+  }
+
+  if (vista === "entregasTareaAdmin" && especialidadActiva && tareaActiva && isAdminOrJefe(profile)) {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => setVista("tareasEspecialidad")}
+        onLogout={handleLogout}
+      >
+        <EntregasTareaAdmin
+          tarea={tareaActiva}
+          especialidad={especialidadActiva}
+          onBack={() => setVista("tareasEspecialidad")}
+        />
+      </EspecialidadAdminModuleLayout>
+    );
+  }
+
+  if (vista === "entregaTareaRecurso" && especialidadActiva && tareaActiva) {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => setVista("tareasEspecialidad")}
+        onLogout={handleLogout}
+      >
+        <EntregaTareaRecurso
+          tarea={tareaActiva}
+          especialidad={especialidadActiva}
+          profile={profile}
+          session={session}
+          onBack={() => setVista("tareasEspecialidad")}
         />
       </EspecialidadAdminModuleLayout>
     );
@@ -1998,6 +2096,7 @@ export default function App() {
           onBack={() => {
             setEspecialidadActiva(null);
             setExpedienteActivo(null);
+            setTareaActiva(null);
             setUsuariosEspecialidad([]);
             setUsuariosEspecialidadError("");
           }}
@@ -2019,6 +2118,27 @@ export default function App() {
     );
   }
 
+  if (!isAdminOrJefe(profile)) {
+    return (
+      <MiCampus
+        session={session}
+        profile={profile}
+        onLogout={handleLogout}
+        onAvatarUpdated={(updatedProfile) => {
+          setProfile((currentProfile) => ({
+            ...(currentProfile || {}),
+            ...(updatedProfile || {}),
+          }));
+        }}
+        onOpenEntregaTarea={({ tarea, especialidad }) => {
+          setEspecialidadActiva(especialidad);
+          setTareaActiva(tarea);
+          setVista("entregaTareaRecurso");
+        }}
+      />
+    );
+  }
+
   return (
     <Dashboard
       session={session}
@@ -2034,6 +2154,7 @@ export default function App() {
         setCursoEvaluacionActivo(null);
         setVista("crearEvaluacion");
       }}
+      onOpenRecursosAdmin={() => setVista("recursosAdmin")}
       onExportReporte={handleExportReporte}
       onProfileUpdated={(updatedProfile) => {
         setProfile((currentProfile) => ({
