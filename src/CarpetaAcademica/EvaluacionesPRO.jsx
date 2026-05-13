@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../supabaseClient";
 import {
   Chart as ChartJS,
@@ -191,20 +191,7 @@ export default function EvaluacionesPRO({
 
   const rol = String(effectiveProfile?.rol || "").toLowerCase();
   const isJefe = rol === "jefe" || rol === "admin";
-  const isJefeArea = rol === "jefe_area";
-  const isSupervisor = rol === "supervisor";
-  const isTecnicoOperativo =
-    rol === "tecnico_operativo" ||
-    rol === "tecnico" ||
-    rol === "técnico" ||
-    rol === "tecnico operativo" ||
-    rol === "técnico operativo";
   const areaIdPerfil = areaActivaProp || effectiveProfile?.area_id || "";
-  const isSupervisorIASS =
-    rol === "supervisor_iass" ||
-    String(effectiveProfile?.cargo || "").toLowerCase().includes("iass") ||
-    String(effectiveProfile?.puesto || "").toLowerCase().includes("iass") ||
-    String(effectiveProfile?.nombre_cargo || "").toLowerCase().includes("iass");
   const unitOptions = useMemo(
     () =>
       serviceOptions.length
@@ -221,12 +208,12 @@ export default function EvaluacionesPRO({
     return map;
   }, [unitOptions]);
 
-  function resolveUnidadFromService(servicioId, fallback = "") {
+  const resolveUnidadFromService = useCallback((servicioId, fallback = "") => {
     if (servicioId && serviceNameById[String(servicioId)]) {
       return serviceNameById[String(servicioId)];
     }
     return fallback || "";
-  }
+  }, [serviceNameById]);
 
   function resolveServiceIdFromUnidad(nombreUnidad) {
     const found = unitOptions.find((item) => item.nombre === nombreUnidad);
@@ -302,7 +289,7 @@ export default function EvaluacionesPRO({
     return () => {
       alive = false;
     };
-  }, [profileProp]);
+  }, [profileProp, resolveUnidadFromService]);
 
   const lastFromGlobalRef = useRef({ unidad: null });
   const lastSentToGlobalRef = useRef({ unidad: null });
@@ -333,7 +320,7 @@ export default function EvaluacionesPRO({
     });
   }, [unidad, setEvaluacionActiva]);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -383,12 +370,12 @@ export default function EvaluacionesPRO({
     } finally {
       setLoading(false);
     }
-  }
+  }, [especialidad?.id, recurso?.profile_id]);
 
   useEffect(() => {
     if (loadingProfile) return;
     loadData();
-  }, [loadingProfile, effectiveProfile?.servicio_id, profile?.rol, especialidad?.id, recurso?.profile_id]);
+  }, [loadingProfile, loadData]);
 
   useEffect(() => {
     if (!supabase) {

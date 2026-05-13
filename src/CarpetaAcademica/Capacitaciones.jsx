@@ -1,9 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient";
 
-const DEFAULT_ROWS = [];
-
-
 const emptyForm = {
   semana: "",
   fecha: new Date().toISOString().slice(0, 10),
@@ -646,5 +643,4 @@ const btnTinyRed = {
   cursor: "pointer",
   fontWeight: 900,
 };
-
 

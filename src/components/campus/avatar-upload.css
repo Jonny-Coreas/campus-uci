@@ -1,0 +1,152 @@
+.avatar-upload {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.avatar-upload-frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.avatar-upload-frame:disabled {
+  cursor: default;
+}
+
+.avatar-upload-frame:not(:disabled):hover {
+  transform: scale(1.035);
+  filter: saturate(1.05);
+}
+
+.avatar-image,
+.avatar-initials {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  border: 4px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.avatar-image {
+  display: block;
+  object-fit: cover;
+  animation: avatarFadeIn 220ms ease both;
+}
+
+.avatar-initials {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #1d74e8, #0f8b8d);
+  color: #ffffff;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.avatar-upload-sm .avatar-upload-frame,
+.avatar-upload-sm .avatar-image,
+.avatar-upload-sm .avatar-initials {
+  width: 46px;
+  height: 46px;
+}
+
+.avatar-upload-sm .avatar-initials {
+  font-size: 13px;
+}
+
+.avatar-upload-md .avatar-upload-frame,
+.avatar-upload-md .avatar-image,
+.avatar-upload-md .avatar-initials {
+  width: 76px;
+  height: 76px;
+}
+
+.avatar-upload-md .avatar-initials {
+  font-size: 20px;
+}
+
+.avatar-upload-lg .avatar-upload-frame,
+.avatar-upload-lg .avatar-image,
+.avatar-upload-lg .avatar-initials {
+  width: 105px;
+  height: 105px;
+}
+
+.avatar-upload-lg .avatar-initials {
+  font-size: 34px;
+}
+
+.avatar-camera {
+  position: absolute;
+  right: -2px;
+  bottom: 4px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+  border-radius: 999px;
+  background: #0b55d9;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 64, 150, 0.24);
+  opacity: 0;
+  transform: translateY(4px) scale(0.9);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.avatar-upload-frame:not(:disabled):hover .avatar-camera {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.avatar-upload-sm .avatar-camera {
+  display: none;
+}
+
+.avatar-spinner {
+  position: absolute;
+  inset: -4px;
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  border-top-color: #67e8f9;
+  border-radius: 999px;
+  animation: avatarSpin 800ms linear infinite;
+}
+
+.avatar-input {
+  display: none;
+}
+
+.avatar-error {
+  max-width: 180px;
+  color: #fecaca;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+}
+
+@keyframes avatarFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes avatarSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
