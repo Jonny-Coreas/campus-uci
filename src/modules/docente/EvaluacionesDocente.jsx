@@ -4,6 +4,7 @@ import {
   getRecursosEvaluacion,
   registrarNota,
 } from "../../services/docenteService";
+import { buildDraftKey, useLocalDraft } from "../../hooks/useLocalDraft";
 
 const initialForm = {
   especialidadId: "",
@@ -13,6 +14,15 @@ const initialForm = {
   nota: "",
   observaciones: "",
 };
+
+function isEvaluacionDraftEmpty(value) {
+  return !String(value?.especialidadId || "").trim()
+    && !String(value?.recursoId || "").trim()
+    && String(value?.area || "") === initialForm.area
+    && !String(value?.actividad || "").trim()
+    && !String(value?.nota || "").trim()
+    && !String(value?.observaciones || "").trim();
+}
 
 export default function EvaluacionesDocente({
   session = null,
@@ -26,6 +36,17 @@ export default function EvaluacionesDocente({
   const [loadingRecursos, setLoadingRecursos] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const draftKey = buildDraftKey(
+    "evaluacionesDocente",
+    profile?.id || profile?.user_id || session?.user?.id || "docente",
+  );
+  const { hasDraft, clearDraft } = useLocalDraft({
+    key: draftKey,
+    value: form,
+    enabled: true,
+    isEmpty: isEvaluacionDraftEmpty,
+    onRestore: (draft) => setForm((prev) => ({ ...prev, ...draft })),
+  });
 
   useEffect(() => {
     loadRecursos();
@@ -73,6 +94,7 @@ export default function EvaluacionesDocente({
       });
 
       setEvaluaciones((prev) => [inserted, ...prev]);
+      clearDraft();
       setForm((prev) => ({
         ...initialForm,
         especialidadId: prev.especialidadId,
@@ -110,6 +132,21 @@ export default function EvaluacionesDocente({
           </div>
 
           <form className="academic-form" onSubmit={handleSubmit}>
+            {hasDraft ? (
+              <div className="draft-notice">
+                <span>Borrador restaurado automáticamente.</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearDraft();
+                    setForm(initialForm);
+                    setMessage("");
+                  }}
+                >
+                  Limpiar borrador
+                </button>
+              </div>
+            ) : null}
             <label>
               Especialidad
               <select value={form.especialidadId} onChange={(event) => setField("especialidadId", event.target.value)} required>

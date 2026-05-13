@@ -6,6 +6,7 @@ import {
   getTareasByEspecialidad,
   updateTarea,
 } from "../../services/clasesTareasService";
+import { buildDraftKey, useLocalDraft } from "../../hooks/useLocalDraft";
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -38,8 +39,18 @@ function mapTareaToForm(row) {
   };
 }
 
+function isTareaDraftEmpty(value) {
+  return !String(value?.titulo || "").trim()
+    && !String(value?.instrucciones || "").trim()
+    && value?.fecha_publicacion === initialForm.fecha_publicacion
+    && value?.fecha_limite === initialForm.fecha_limite
+    && Number(value?.puntaje) === Number(initialForm.puntaje)
+    && value?.estado === initialForm.estado;
+}
+
 export default function TareasEspecialidad({
   especialidad = null,
+  profile = null,
   canManageAcademic = false,
   onBack = null,
   onOpenEntregas = null,
@@ -55,7 +66,23 @@ export default function TareasEspecialidad({
   const [showForm, setShowForm] = useState(true);
 
   const especialidadId = especialidad?.id || null;
+  const draftKey = buildDraftKey(
+    "tareasEspecialidad",
+    profile?.id || profile?.user_id || "usuario",
+    especialidadId,
+    editingId || "nuevo",
+  );
   const abiertas = useMemo(() => rows.filter((row) => row.estado === "abierta").length, [rows]);
+  const { hasDraft, clearDraft } = useLocalDraft({
+    key: draftKey,
+    value: form,
+    enabled: Boolean(canManageAcademic && especialidadId),
+    isEmpty: isTareaDraftEmpty,
+    onRestore: (draft) => {
+      setForm((prev) => ({ ...prev, ...draft }));
+      setShowForm(true);
+    },
+  });
 
   useEffect(() => {
     loadTareas();
@@ -90,6 +117,12 @@ export default function TareasEspecialidad({
   function resetForm() {
     setForm(initialForm);
     setEditingId(null);
+  }
+
+  function clearLocalDraft() {
+    clearDraft();
+    resetForm();
+    setError("");
   }
 
   function startEdit(row) {
@@ -127,6 +160,7 @@ export default function TareasEspecialidad({
       } else {
         await createTarea(especialidadId, form);
       }
+      clearDraft();
       resetForm();
       setShowForm(false);
       await loadTareas();
@@ -212,6 +246,12 @@ export default function TareasEspecialidad({
 
           {showForm ? (
             <form className="academic-form" onSubmit={handleSubmit}>
+              {hasDraft ? (
+                <div className="draft-notice">
+                  <span>Borrador restaurado automáticamente.</span>
+                  <button type="button" onClick={clearLocalDraft}>Limpiar borrador</button>
+                </div>
+              ) : null}
               <label>
                 Título
                 <input value={form.titulo} onChange={(event) => setField("titulo", event.target.value)} required />

@@ -4,6 +4,7 @@ import {
   getEntregaByTareaAndRecurso,
   submitEntregaTarea,
 } from "../../services/clasesTareasService";
+import { buildDraftKey, useLocalDraft } from "../../hooks/useLocalDraft";
 
 function formatDate(value) {
   if (!value) return "Sin fecha";
@@ -26,6 +27,7 @@ export default function EntregaTareaRecurso({
   const [entrega, setEntrega] = useState(null);
   const [comentario, setComentario] = useState("");
   const [file, setFile] = useState(null);
+  const [restoredFileName, setRestoredFileName] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -33,6 +35,20 @@ export default function EntregaTareaRecurso({
   const profileId = profile?.id || null;
   const userId = profile?.user_id || session?.user?.id || null;
   const recursoId = profileId || userId;
+  const draftKey = buildDraftKey("entregaTareaRecurso", recursoId, especialidad?.id, tarea?.id);
+  const { hasDraft, clearDraft } = useLocalDraft({
+    key: draftKey,
+    value: {
+      comentario,
+      archivoNombre: file?.name || restoredFileName || "",
+    },
+    enabled: Boolean(tarea?.id && recursoId),
+    isEmpty: (value) => !String(value?.comentario || "").trim() && !String(value?.archivoNombre || "").trim(),
+    onRestore: (draft) => {
+      setComentario(draft.comentario || "");
+      setRestoredFileName(draft.archivoNombre || "");
+    },
+  });
 
   useEffect(() => {
     loadEntrega();
@@ -55,7 +71,7 @@ export default function EntregaTareaRecurso({
         userId,
       });
       setEntrega(data);
-      setComentario(data?.comentario || "");
+      setComentario((current) => current || data?.comentario || "");
     } catch (loadError) {
       console.error("[Campus UCI] Error cargando entrega del recurso:", loadError);
       setError(loadError.message || "No se pudo cargar la entrega.");
@@ -88,7 +104,9 @@ export default function EntregaTareaRecurso({
         comentario,
         file,
       });
+      clearDraft();
       setFile(null);
+      setRestoredFileName("");
       await loadEntrega();
     } catch (saveError) {
       console.error("[Campus UCI] Error enviando entrega:", saveError);
@@ -126,6 +144,25 @@ export default function EntregaTareaRecurso({
           </div>
 
           <form className="academic-form" onSubmit={handleSubmit}>
+            {hasDraft ? (
+              <div className="draft-notice">
+                <span>
+                  Borrador restaurado automáticamente.
+                  {restoredFileName ? ` Debes volver a seleccionar el archivo: ${restoredFileName}.` : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearDraft();
+                    setComentario(entrega?.comentario || "");
+                    setRestoredFileName("");
+                    setFile(null);
+                  }}
+                >
+                  Limpiar borrador
+                </button>
+              </div>
+            ) : null}
             <label>
               Comentario del recurso
               <textarea
@@ -139,7 +176,11 @@ export default function EntregaTareaRecurso({
               Archivo de evidencia
               <input
                 type="file"
-                onChange={(event) => setFile(event.target.files?.[0] || null)}
+                onChange={(event) => {
+                  const nextFile = event.target.files?.[0] || null;
+                  setFile(nextFile);
+                  setRestoredFileName(nextFile?.name || "");
+                }}
               />
             </label>
             <button type="submit" className="academic-submit" disabled={saving || loading}>

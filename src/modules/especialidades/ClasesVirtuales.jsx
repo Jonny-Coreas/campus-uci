@@ -6,6 +6,7 @@ import {
   getClasesVirtualesByEspecialidad,
   updateClaseVirtual,
 } from "../../services/clasesTareasService";
+import { buildDraftKey, useLocalDraft } from "../../hooks/useLocalDraft";
 
 const initialForm = {
   titulo: "",
@@ -46,7 +47,18 @@ function mapClaseToForm(row) {
   };
 }
 
-export default function ClasesVirtuales({ especialidad = null, onBack = null }) {
+function isClaseDraftEmpty(value) {
+  return !String(value?.titulo || "").trim()
+    && !String(value?.descripcion || "").trim()
+    && !String(value?.docente || "").trim()
+    && !String(value?.enlace_virtual || "").trim()
+    && value?.fecha === initialForm.fecha
+    && value?.hora_inicio === initialForm.hora_inicio
+    && value?.hora_fin === initialForm.hora_fin
+    && value?.estado === initialForm.estado;
+}
+
+export default function ClasesVirtuales({ especialidad = null, profile = null, onBack = null }) {
   const [rows, setRows] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
@@ -57,7 +69,23 @@ export default function ClasesVirtuales({ especialidad = null, onBack = null }) 
   const [showForm, setShowForm] = useState(true);
 
   const especialidadId = especialidad?.id || null;
+  const draftKey = buildDraftKey(
+    "clasesVirtuales",
+    profile?.id || profile?.user_id || "usuario",
+    especialidadId,
+    editingId || "nuevo",
+  );
   const proximasClases = useMemo(() => rows.filter(isUpcoming).slice(0, 4), [rows]);
+  const { hasDraft, clearDraft } = useLocalDraft({
+    key: draftKey,
+    value: form,
+    enabled: Boolean(especialidadId),
+    isEmpty: isClaseDraftEmpty,
+    onRestore: (draft) => {
+      setForm((prev) => ({ ...prev, ...draft }));
+      setShowForm(true);
+    },
+  });
 
   useEffect(() => {
     loadClases();
@@ -92,6 +120,12 @@ export default function ClasesVirtuales({ especialidad = null, onBack = null }) 
   function resetForm() {
     setForm(initialForm);
     setEditingId(null);
+  }
+
+  function clearLocalDraft() {
+    clearDraft();
+    resetForm();
+    setError("");
   }
 
   function startEdit(row) {
@@ -129,6 +163,7 @@ export default function ClasesVirtuales({ especialidad = null, onBack = null }) 
       } else {
         await createClaseVirtual(especialidadId, form);
       }
+      clearDraft();
       resetForm();
       setShowForm(false);
       await loadClases();
@@ -214,6 +249,12 @@ export default function ClasesVirtuales({ especialidad = null, onBack = null }) 
 
           {showForm ? (
             <form className="academic-form" onSubmit={handleSubmit}>
+              {hasDraft ? (
+                <div className="draft-notice">
+                  <span>Borrador restaurado automáticamente.</span>
+                  <button type="button" onClick={clearLocalDraft}>Limpiar borrador</button>
+                </div>
+              ) : null}
               <label>
                 Título
                 <input value={form.titulo} onChange={(event) => setField("titulo", event.target.value)} required />

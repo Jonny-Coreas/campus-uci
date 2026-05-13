@@ -24,7 +24,11 @@ export default function DocenteDashboard({
   profile,
   onLogout,
   onAvatarUpdated,
+  onOpenEspecializaciones,
   onOpenEvaluaciones,
+  onOpenAsistencia,
+  onOpenCronograma,
+  onOpenMensajes,
 }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -39,9 +43,14 @@ export default function DocenteDashboard({
 
   const menuItems = [
     { label: "Inicio" },
-    { label: "Calendario", onClick: () => document.getElementById("docente-clases")?.scrollIntoView({ behavior: "smooth" }) },
+    { label: "Especializaciones", onClick: onOpenEspecializaciones },
+    { label: "Calendario", onClick: onOpenCronograma },
+    { label: "Asistencia", onClick: onOpenAsistencia },
     { label: "Evaluaciones", onClick: onOpenEvaluaciones },
+    { label: "Mensajes", onClick: onOpenMensajes },
     { label: "Documentos", onClick: () => document.getElementById("docente-entregas")?.scrollIntoView({ behavior: "smooth" }) },
+    { label: "Biblioteca", onClick: () => document.getElementById("docente-entregas")?.scrollIntoView({ behavior: "smooth" }) },
+    { label: "Configuración" },
   ];
 
   useEffect(() => {
@@ -134,6 +143,7 @@ export default function DocenteDashboard({
 
         <section className="teacher-quick-grid">
           <button type="button" onClick={onOpenEvaluaciones}><Star size={22} strokeWidth={1.9} /> Evaluaciones</button>
+          <button type="button" onClick={onOpenAsistencia}><CalendarDays size={22} strokeWidth={1.9} /> Asistencia</button>
           <button type="button" onClick={() => document.getElementById("docente-entregas")?.scrollIntoView({ behavior: "smooth" })}><FileCheck2 size={22} strokeWidth={1.9} /> Revisar entregas</button>
           <button type="button" onClick={() => document.getElementById("docente-clases")?.scrollIntoView({ behavior: "smooth" })}><CalendarDays size={22} strokeWidth={1.9} /> Mis clases</button>
         </section>

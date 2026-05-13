@@ -31,9 +31,12 @@ import TareasEspecialidad from "./modules/especialidades/TareasEspecialidad";
 import EntregasTareaAdmin from "./modules/especialidades/EntregasTareaAdmin";
 import EntregaTareaRecurso from "./modules/especialidades/EntregaTareaRecurso";
 import MiCampus from "./modules/recurso/MiCampus";
+import MiAsistencia from "./modules/recurso/MiAsistencia";
 import RecursosAdmin from "./modules/admin/RecursosAdmin";
 import DocenteDashboard from "./modules/docente/DocenteDashboard";
 import EvaluacionesDocente from "./modules/docente/EvaluacionesDocente";
+import AsistenciaDocente from "./modules/docente/AsistenciaDocente";
+import CronogramaAcademico from "./modules/campus/CronogramaAcademico";
 import IndexCarpetaAcademica from "./CarpetaAcademica/IndexCarpetaAcademica";
 import { isAdmin, isAdminOrJefe, isDocente, isRecurso, normalizeRole } from "./auth/roles";
 import {
@@ -445,6 +448,34 @@ function PortalPlaceholder({
   );
 }
 
+function MensajesAcademicosPlaceholder({ onBack }) {
+  return (
+    <section className="cu-portal-placeholder" aria-label="Mensajes académicos">
+      <div className="cu-portal-placeholder-head">
+        <span className="cu-kicker">Comunicación</span>
+        <h2>Mensajes académicos próximamente</h2>
+        <p>
+          Bandeja preparada para avisos institucionales, mensajes docentes y comunicaciones por especialidad.
+        </p>
+      </div>
+
+      <div className="cu-portal-placeholder-grid">
+        {["Bandeja académica", "Avisos por especialidad", "Mensajes docentes"].map((item) => (
+          <article className="cu-portal-placeholder-card" key={item}>
+            <span aria-hidden="true">▣</span>
+            <strong>{item}</strong>
+            <p>Esta sección quedará conectada en una fase posterior de mensajería.</p>
+          </article>
+        ))}
+      </div>
+
+      <div className="cu-portal-placeholder-actions">
+        <button type="button" onClick={onBack}>Volver al inicio</button>
+      </div>
+    </section>
+  );
+}
+
 
 function ExpedientesEspecialidad({
   session,
@@ -457,6 +488,9 @@ function ExpedientesEspecialidad({
   onOpenDrive,
   onOpenClasesVirtuales,
   onOpenTareas,
+  onOpenAsistencia,
+  menuItems,
+  activeItem = "Especializaciones",
   canOpenDrive = false,
   canManageAcademic = false,
   onBack,
@@ -482,17 +516,9 @@ function ExpedientesEspecialidad({
     especialidad?.descripcion ||
     "Recursos en formación, accesos académicos y seguimiento operativo de la especialidad en Campus UCI.";
   const specialtyStatus = especialidad?.activa === false || especialidad?.activo === false ? "Inactiva" : "Activa";
-  const specialtyMenuItems = [
+  const specialtyMenuItems = menuItems || [
     { label: "Inicio", onClick: onBack },
     { label: "Especializaciones", onClick: onBack },
-    { label: "Calendario" },
-    { label: "Asistencia" },
-    { label: "Evaluaciones" },
-    { label: "Mensajes" },
-    { label: "Notificaciones" },
-    { label: "Documentos" },
-    { label: "Biblioteca" },
-    { label: "Configuración" },
   ];
   const specialtyAccessCards = [
     {
@@ -529,6 +555,7 @@ function ExpedientesEspecialidad({
       description: "Seguimiento de asistencia por clase, recurso y módulo.",
       icon: ClipboardCheck,
       tone: "purple",
+      action: onOpenAsistencia,
     },
     {
       title: "Evaluaciones",
@@ -576,7 +603,7 @@ function ExpedientesEspecialidad({
       user={session?.user}
       profile={profile}
       menuItems={specialtyMenuItems}
-      activeItem="Especializaciones"
+      activeItem={activeItem}
       onLogout={onLogout}
     >
       <div className="specialty-page">
@@ -703,6 +730,8 @@ function EspecialidadAdminModuleLayout({
   profile,
   onBack,
   onLogout,
+  menuItems,
+  activeItem = "Especializaciones",
   children,
 }) {
   const displayName =
@@ -711,17 +740,9 @@ function EspecialidadAdminModuleLayout({
     session?.user?.user_metadata?.name ||
     "Usuario";
 
-  const specialtyMenuItems = [
+  const specialtyMenuItems = menuItems || [
     { label: "Inicio", onClick: onBack },
     { label: "Especializaciones", onClick: onBack },
-    { label: "Calendario" },
-    { label: "Asistencia" },
-    { label: "Evaluaciones" },
-    { label: "Mensajes" },
-    { label: "Notificaciones" },
-    { label: "Documentos" },
-    { label: "Biblioteca" },
-    { label: "Configuración" },
   ];
 
   return (
@@ -732,7 +753,7 @@ function EspecialidadAdminModuleLayout({
       user={session?.user}
       profile={profile}
       menuItems={specialtyMenuItems}
-      activeItem="Especializaciones"
+      activeItem={activeItem}
       onLogout={onLogout}
     >
       {children}
@@ -1166,8 +1187,26 @@ function AsignarEspecialidad({
 }
 
 
-function Dashboard({ session, profile, especialidades, loadingData, dataError, onLogout, onOpenEspecialidad, onOpenRegistrar, onOpenAsignar, onOpenCrearEvaluacion, onOpenRecursosAdmin, onExportReporte, onProfileUpdated }) {
-  const [portalView, setPortalView] = useState("inicio");
+function Dashboard({
+  session,
+  profile,
+  especialidades,
+  loadingData,
+  dataError,
+  onLogout,
+  onOpenEspecialidad,
+  onOpenRegistrar,
+  onOpenAsignar,
+  onOpenCrearEvaluacion,
+  onOpenRecursosAdmin,
+  onOpenCronograma,
+  onOpenAsistencia,
+  onOpenMensajes,
+  initialPortalView = "inicio",
+  onExportReporte,
+  onProfileUpdated,
+}) {
+  const [portalView, setPortalView] = useState(initialPortalView || "inicio");
   const displayName =
     profile?.nombre ||
     session?.user?.user_metadata?.full_name ||
@@ -1204,6 +1243,7 @@ function Dashboard({ session, profile, especialidades, loadingData, dataError, o
     firma: "Firma de Asistencia",
     normativas: "Normativas",
     autogestion: "Autogestión",
+    mensajes: "Mensajes",
   };
   const placeholderContent = {
     calendario: {
@@ -1272,11 +1312,21 @@ function Dashboard({ session, profile, especialidades, loadingData, dataError, o
       description: "Accesos rápidos para registrar personal, asignar especialidades y mantener el campus.",
       items: ["Registrar personal", "Asignar especialidad", "Gestión operativa"],
     },
+    mensajes: {
+      title: "Mensajes académicos próximamente",
+      badge: "Comunicación",
+      description: "Sección preparada para comunicaciones académicas, avisos docentes y mensajes institucionales.",
+      items: ["Bandeja académica", "Avisos por especialidad", "Mensajes docentes"],
+    },
   };
 
   function openPortalView(nextView) {
     setPortalView(nextView);
   }
+
+  useEffect(() => {
+    setPortalView(initialPortalView || "inicio");
+  }, [initialPortalView]);
 
   const portalCards = [
     {
@@ -1323,7 +1373,7 @@ function Dashboard({ session, profile, especialidades, loadingData, dataError, o
     },
   ];
   const quickActionCards = [
-    { title: "Cronograma", detail: "Ver clases y módulos", tone: "blue", icon: CalendarDays, action: () => openPortalView("calendario") },
+    { title: "Cronograma", detail: "Ver clases y módulos", tone: "blue", icon: CalendarDays, action: onOpenCronograma },
     { title: "Evaluaciones", detail: "Revisar pendientes", tone: "purple", icon: BookOpenCheck, action: () => openPortalView("evaluaciones") },
     { title: "Biblioteca", detail: "Abrir documentos", tone: "green", icon: BookOpen, action: () => openPortalView("biblioteca") },
     { title: "Reportes", detail: "Historial académico", tone: "orange", icon: BarChart3, action: () => openPortalView("reportes") },
@@ -1332,10 +1382,10 @@ function Dashboard({ session, profile, especialidades, loadingData, dataError, o
     { label: "Inicio", icon: "⌂", onClick: () => openPortalView("inicio") },
     { label: "Especializaciones", icon: "▣", onClick: () => openPortalView("especializaciones") },
     { label: "Recursos Académicos", icon: UserRoundPlus, onClick: onOpenRecursosAdmin },
-    { label: "Calendario", icon: "◷", onClick: () => openPortalView("calendario") },
-    { label: "Asistencia", icon: "☑", onClick: () => openPortalView("asistencia") },
+    { label: "Calendario", icon: "◷", onClick: onOpenCronograma },
+    { label: "Asistencia", icon: "☑", onClick: onOpenAsistencia },
     { label: "Evaluaciones", icon: "◎", onClick: () => openPortalView("evaluaciones") },
-    { label: "Mensajes", icon: "✉", onClick: () => openPortalView("inicio") },
+    { label: "Mensajes", icon: "✉", onClick: onOpenMensajes || (() => openPortalView("mensajes")) },
     { label: "Notificaciones", icon: "!", onClick: () => openPortalView("inicio") },
     { label: "Documentos", icon: "□", onClick: () => openPortalView("biblioteca") },
     { label: "Biblioteca", icon: "▤", onClick: () => openPortalView("biblioteca") },
@@ -1481,7 +1531,7 @@ function Dashboard({ session, profile, especialidades, loadingData, dataError, o
                 </div>
 
                 <div className="hero-actions">
-                  <button type="button" onClick={() => openPortalView("calendario")}>Ver cronograma</button>
+                  <button type="button" onClick={onOpenCronograma}>Ver cronograma</button>
                   <button type="button" onClick={() => openPortalView("evaluaciones")}>Mis evaluaciones</button>
                 </div>
               </div>
@@ -1648,6 +1698,7 @@ export default function App() {
   const [loadingData, setLoadingData] = useState(false);
   const [dataError, setDataError] = useState("");
   const [vista, setVista] = useState("dashboard");
+  const [dashboardPortalView, setDashboardPortalView] = useState("inicio");
   const [cursoEvaluacionActivo, setCursoEvaluacionActivo] = useState(null);
   const [tareaActiva, setTareaActiva] = useState(null);
 
@@ -1673,6 +1724,7 @@ export default function App() {
         setEspecialidadActiva(null);
         setUsuariosEspecialidad([]);
         setVista("dashboard");
+        setDashboardPortalView("inicio");
         setCursoEvaluacionActivo(null);
         setTareaActiva(null);
       }
@@ -1832,7 +1884,107 @@ export default function App() {
     setEspecialidadActiva(null);
     setUsuariosEspecialidad([]);
     setVista("dashboard");
+    setDashboardPortalView("inicio");
     setTareaActiva(null);
+  }
+
+  function openDashboardPortal(nextView = "inicio") {
+    setEspecialidadActiva(null);
+    setExpedienteActivo(null);
+    setTareaActiva(null);
+    setUsuariosEspecialidad([]);
+    setUsuariosEspecialidadError("");
+    setDashboardPortalView(nextView);
+    setVista("dashboard");
+  }
+
+  function handleSidebarNavigation(label) {
+    if (label === "Inicio") {
+      openDashboardPortal("inicio");
+      return;
+    }
+
+    if (label === "Especializaciones") {
+      if (isAdminOrJefe(profile)) {
+        openDashboardPortal("especializaciones");
+        return;
+      }
+
+      openDashboardPortal("inicio");
+      return;
+    }
+
+    if (label === "Calendario") {
+      setVista("cronogramaAcademico");
+      return;
+    }
+
+    if (label === "Asistencia") {
+      if (isDocente(profile)) {
+        setVista("docenteAsistencia");
+        return;
+      }
+
+      if (isRecurso(profile)) {
+        setVista("miAsistencia");
+        return;
+      }
+
+      setVista("asistencia");
+      return;
+    }
+
+    if (label === "Evaluaciones") {
+      if (isDocente(profile)) {
+        setVista("docenteEvaluaciones");
+        return;
+      }
+
+      if (isRecurso(profile)) {
+        openDashboardPortal("inicio");
+        return;
+      }
+
+      openDashboardPortal("evaluaciones");
+      return;
+    }
+
+    if (label === "Mensajes") {
+      setVista("mensajes");
+      return;
+    }
+
+    if (label === "Documentos" || label === "Biblioteca") {
+      openDashboardPortal("biblioteca");
+      return;
+    }
+
+    if (label === "Configuración") {
+      openDashboardPortal(isAdminOrJefe(profile) ? "autogestion" : "inicio");
+    }
+  }
+
+  function getCampusMenuItems() {
+    return [
+      { label: "Inicio", onClick: () => handleSidebarNavigation("Inicio") },
+      { label: "Especializaciones", onClick: () => handleSidebarNavigation("Especializaciones") },
+      { label: "Calendario", onClick: () => handleSidebarNavigation("Calendario") },
+      { label: "Asistencia", onClick: () => handleSidebarNavigation("Asistencia") },
+      { label: "Evaluaciones", onClick: () => handleSidebarNavigation("Evaluaciones") },
+      { label: "Mensajes", onClick: () => handleSidebarNavigation("Mensajes") },
+      { label: "Notificaciones", onClick: () => openDashboardPortal("inicio") },
+      { label: "Documentos", onClick: () => handleSidebarNavigation("Documentos") },
+      { label: "Biblioteca", onClick: () => handleSidebarNavigation("Biblioteca") },
+      { label: "Configuración", onClick: () => handleSidebarNavigation("Configuración") },
+    ];
+  }
+
+  function getActiveCampusItem(defaultItem = "Inicio") {
+    if (vista === "cronogramaAcademico") return "Calendario";
+    if (vista === "asistencia" || vista === "docenteAsistencia" || vista === "miAsistencia") return "Asistencia";
+    if (vista === "docenteEvaluaciones" || vista === "crearEvaluacion") return "Evaluaciones";
+    if (vista === "mensajes") return "Mensajes";
+    return defaultItem;
   }
 
   if (sessionLoading) return <div className="cu-loading">Cargando sesión...</div>;
@@ -1871,6 +2023,8 @@ export default function App() {
         profile={profile}
         onBack={() => setVista("dashboard")}
         onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
       >
         <RecursosAdmin
           session={session}
@@ -1914,6 +2068,8 @@ export default function App() {
           setCursoEvaluacionActivo(null);
         }}
         onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
       >
         <section className="cu-panel cu-specialties-panel">
           <div className="cu-panel-header">
@@ -1985,9 +2141,12 @@ export default function App() {
         profile={profile}
         onBack={() => setVista("dashboard")}
         onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
       >
         <ClasesVirtuales
           especialidad={especialidadActiva}
+          profile={profile}
           onBack={() => setVista("dashboard")}
         />
       </EspecialidadAdminModuleLayout>
@@ -2001,9 +2160,12 @@ export default function App() {
         profile={profile}
         onBack={() => setVista("dashboard")}
         onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
       >
         <TareasEspecialidad
           especialidad={especialidadActiva}
+          profile={profile}
           canManageAcademic={isAdminOrJefe(profile)}
           onOpenEntregas={(tarea) => {
             setTareaActiva(tarea);
@@ -2026,9 +2188,12 @@ export default function App() {
         profile={profile}
         onBack={() => setVista("dashboard")}
         onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
       >
         <TareasEspecialidad
           especialidad={especialidadActiva}
+          profile={profile}
           canManageAcademic={false}
           onOpenEntregaRecurso={(tarea) => {
             setTareaActiva(tarea);
@@ -2047,6 +2212,8 @@ export default function App() {
         profile={profile}
         onBack={() => setVista("tareasEspecialidad")}
         onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
       >
         <EntregasTareaAdmin
           tarea={tareaActiva}
@@ -2064,6 +2231,8 @@ export default function App() {
         profile={profile}
         onBack={() => setVista("tareasEspecialidad")}
         onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
       >
         <EntregaTareaRecurso
           tarea={tareaActiva}
@@ -2076,6 +2245,21 @@ export default function App() {
     );
   }
 
+  if (vista === "mensajes") {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => openDashboardPortal("inicio")}
+        onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
+      >
+        <MensajesAcademicosPlaceholder onBack={() => openDashboardPortal("inicio")} />
+      </EspecialidadAdminModuleLayout>
+    );
+  }
+
   if (vista === "docenteEvaluaciones" && isDocente(profile)) {
     return (
       <EspecialidadAdminModuleLayout
@@ -2083,11 +2267,80 @@ export default function App() {
         profile={profile}
         onBack={() => setVista("dashboard")}
         onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
       >
         <EvaluacionesDocente
           session={session}
           profile={profile}
           especialidades={especialidades}
+          onBack={() => setVista("dashboard")}
+        />
+      </EspecialidadAdminModuleLayout>
+    );
+  }
+
+  if (vista === "docenteAsistencia" && isDocente(profile)) {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => setVista("dashboard")}
+        onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
+      >
+        <AsistenciaDocente profile={profile} onBack={() => setVista("dashboard")} />
+      </EspecialidadAdminModuleLayout>
+    );
+  }
+
+  if (vista === "asistencia" && isAdminOrJefe(profile)) {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => setVista("dashboard")}
+        onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
+      >
+        <AsistenciaDocente profile={profile} onBack={() => setVista("dashboard")} />
+      </EspecialidadAdminModuleLayout>
+    );
+  }
+
+  if (vista === "cronogramaAcademico" && (isDocente(profile) || isRecurso(profile) || isAdminOrJefe(profile))) {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => setVista("dashboard")}
+        onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
+      >
+        <CronogramaAcademico
+          especialidadId={especialidadActiva?.id || null}
+          onBack={() => setVista("dashboard")}
+        />
+      </EspecialidadAdminModuleLayout>
+    );
+  }
+
+  if (vista === "miAsistencia" && isRecurso(profile)) {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => setVista("dashboard")}
+        onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
+      >
+        <MiAsistencia
+          profile={profile}
+          especialidad={especialidadActiva}
           onBack={() => setVista("dashboard")}
         />
       </EspecialidadAdminModuleLayout>
@@ -2111,8 +2364,23 @@ export default function App() {
           onOpenDrive={() => setVista("especialidadDrive")}
           onOpenClasesVirtuales={() => setVista("clasesVirtuales")}
           onOpenTareas={() => setVista("tareasEspecialidad")}
+          onOpenAsistencia={() => {
+            if (isDocente(profile)) {
+              setVista("docenteAsistencia");
+              return;
+            }
+
+            if (isRecurso(profile)) {
+              setVista("miAsistencia");
+              return;
+            }
+
+            setVista("asistencia");
+          }}
           canOpenDrive={isAdminOrJefe(profile)}
           canManageAcademic={isAdminOrJefe(profile)}
+          menuItems={getCampusMenuItems()}
+          activeItem={getActiveCampusItem("Especializaciones")}
           onBack={() => {
             setEspecialidadActiva(null);
             setExpedienteActivo(null);
@@ -2150,7 +2418,11 @@ export default function App() {
             ...(updatedProfile || {}),
           }));
         }}
+        onOpenEspecializaciones={() => handleSidebarNavigation("Especializaciones")}
         onOpenEvaluaciones={() => setVista("docenteEvaluaciones")}
+        onOpenAsistencia={() => setVista("docenteAsistencia")}
+        onOpenCronograma={() => setVista("cronogramaAcademico")}
+        onOpenMensajes={() => setVista("mensajes")}
       />
     );
   }
@@ -2172,6 +2444,10 @@ export default function App() {
           setTareaActiva(tarea);
           setVista("entregaTareaRecurso");
         }}
+        onOpenEspecializaciones={() => handleSidebarNavigation("Especializaciones")}
+        onOpenAsistencia={() => setVista("miAsistencia")}
+        onOpenCronograma={() => setVista("cronogramaAcademico")}
+        onOpenMensajes={() => setVista("mensajes")}
       />
     );
   }
@@ -2192,6 +2468,10 @@ export default function App() {
         setVista("crearEvaluacion");
       }}
       onOpenRecursosAdmin={() => setVista("recursosAdmin")}
+      onOpenCronograma={() => setVista("cronogramaAcademico")}
+      onOpenAsistencia={() => setVista("asistencia")}
+      onOpenMensajes={() => setVista("mensajes")}
+      initialPortalView={dashboardPortalView}
       onExportReporte={handleExportReporte}
       onProfileUpdated={(updatedProfile) => {
         setProfile((currentProfile) => ({

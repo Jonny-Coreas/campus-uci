@@ -66,6 +66,10 @@ export default function CampusLayout({
   rightPanel,
   footer = null,
 }) {
+  const normalizedMenuItems = menuItems.map((item) => (
+    typeof item === "string" ? { label: item } : item
+  ));
+
   return (
     <div className="campus-layout dashboard-shell">
       <aside className="campus-sidebar sidebar" aria-label="Navegación Campus UCI">
@@ -83,7 +87,7 @@ export default function CampusLayout({
         </div>
 
         <nav className="campus-menu">
-          {menuItems.map((item) => (
+          {normalizedMenuItems.map((item) => (
             <button
               type="button"
               className={item.label === activeItem ? "active" : ""}

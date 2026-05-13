@@ -56,7 +56,11 @@ export default function MiCampus({
   profile,
   onLogout,
   onAvatarUpdated,
+  onOpenEspecializaciones,
   onOpenEntregaTarea,
+  onOpenAsistencia,
+  onOpenCronograma,
+  onOpenMensajes,
 }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -105,9 +109,14 @@ export default function MiCampus({
   const stats = data?.stats || {};
   const menuItems = [
     { label: "Inicio" },
-    { label: "Calendario", onClick: () => document.getElementById("mi-campus-clases")?.scrollIntoView({ behavior: "smooth" }) },
+    { label: "Especializaciones", onClick: onOpenEspecializaciones },
+    { label: "Calendario", onClick: onOpenCronograma },
+    { label: "Asistencia", onClick: onOpenAsistencia },
     { label: "Evaluaciones", onClick: () => document.getElementById("mi-campus-notas")?.scrollIntoView({ behavior: "smooth" }) },
+    { label: "Mensajes", onClick: onOpenMensajes },
     { label: "Documentos", onClick: () => document.getElementById("mi-campus-evidencias")?.scrollIntoView({ behavior: "smooth" }) },
+    { label: "Biblioteca", onClick: () => document.getElementById("mi-campus-evidencias")?.scrollIntoView({ behavior: "smooth" }) },
+    { label: "Configuración" },
   ];
 
   function openEntrega(tarea) {
@@ -187,6 +196,10 @@ export default function MiCampus({
               <button type="button" onClick={() => document.getElementById("mi-campus-clases")?.scrollIntoView({ behavior: "smooth" })}>
                 <CalendarDays size={22} strokeWidth={1.9} />
                 <span>Mis clases</span>
+              </button>
+              <button type="button" onClick={onOpenAsistencia}>
+                <CheckCircle2 size={22} strokeWidth={1.9} />
+                <span>Mi asistencia</span>
               </button>
               <button type="button" onClick={() => document.getElementById("mi-campus-notas")?.scrollIntoView({ behavior: "smooth" })}>
                 <BookOpenCheck size={22} strokeWidth={1.9} />

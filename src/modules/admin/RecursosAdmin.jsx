@@ -7,6 +7,7 @@ import {
   toggleActivo,
   updateRecurso,
 } from "../../services/recursosAdminService";
+import { buildDraftKey, useLocalDraft } from "../../hooks/useLocalDraft";
 
 const initialForm = {
   id: "",
@@ -40,6 +41,34 @@ function buildFormFromResource(resource) {
   };
 }
 
+function sanitizeResourceDraft(form, avatarFileName = "") {
+  return {
+    id: form.id || "",
+    user_id: form.user_id || "",
+    nombre: form.nombre || "",
+    correo: form.correo || "",
+    cum: form.cum || "",
+    servicio: form.servicio || "UCI",
+    area: form.area || "",
+    especialidadId: form.especialidadId || "",
+    progreso: form.progreso ?? 0,
+    activo: form.activo !== false,
+    avatarFileName,
+  };
+}
+
+function isResourceDraftEmpty(value) {
+  return !String(value?.nombre || "").trim()
+    && !String(value?.correo || "").trim()
+    && !String(value?.cum || "").trim()
+    && String(value?.servicio || "UCI") === "UCI"
+    && !String(value?.area || "").trim()
+    && !String(value?.especialidadId || "").trim()
+    && Number(value?.progreso || 0) === 0
+    && value?.activo !== false
+    && !String(value?.avatarFileName || "").trim();
+}
+
 export default function RecursosAdmin({
   session = null,
   especialidades = [],
@@ -53,6 +82,27 @@ export default function RecursosAdmin({
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(initialForm);
+  const [avatarDraftName, setAvatarDraftName] = useState("");
+  const draftKey = buildDraftKey(
+    "recursosAdmin",
+    session?.user?.id || "admin",
+    editingId || "nuevo",
+  );
+  const { hasDraft, clearDraft } = useLocalDraft({
+    key: draftKey,
+    value: sanitizeResourceDraft(form, form.avatarFile?.name || avatarDraftName),
+    enabled: showModal,
+    isEmpty: isResourceDraftEmpty,
+    onRestore: (draft) => {
+      setForm((prev) => ({
+        ...prev,
+        ...draft,
+        password: "",
+        avatarFile: null,
+      }));
+      setAvatarDraftName(draft.avatarFileName || "");
+    },
+  });
 
   useEffect(() => {
     loadRecursos();
@@ -90,6 +140,7 @@ export default function RecursosAdmin({
   function openCreate() {
     setEditingId(null);
     setForm(initialForm);
+    setAvatarDraftName("");
     setShowModal(true);
     setMessage("");
   }
@@ -97,6 +148,7 @@ export default function RecursosAdmin({
   function openEdit(resource) {
     setEditingId(resource.id);
     setForm(buildFormFromResource(resource));
+    setAvatarDraftName("");
     setShowModal(true);
     setMessage("");
   }
@@ -105,6 +157,7 @@ export default function RecursosAdmin({
     setShowModal(false);
     setEditingId(null);
     setForm(initialForm);
+    setAvatarDraftName("");
   }
 
   async function handleSubmit(event) {
@@ -121,6 +174,7 @@ export default function RecursosAdmin({
         setMessage("Recurso creado con usuario de acceso y especialidad asignada.");
       }
 
+      clearDraft();
       closeModal();
       await loadRecursos();
     } catch (error) {
@@ -272,6 +326,24 @@ export default function RecursosAdmin({
             </div>
 
             <form className="academic-form" onSubmit={handleSubmit}>
+              {hasDraft ? (
+                <div className="draft-notice">
+                  <span>
+                    Borrador restaurado automáticamente.
+                    {avatarDraftName ? ` Debes volver a seleccionar el avatar: ${avatarDraftName}.` : ""}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearDraft();
+                      setForm(initialForm);
+                      setAvatarDraftName("");
+                    }}
+                  >
+                    Limpiar borrador
+                  </button>
+                </div>
+              ) : null}
               <div className="academic-form-row">
                 <label>
                   Nombre completo
@@ -326,7 +398,15 @@ export default function RecursosAdmin({
                 </label>
                 <label>
                   Avatar opcional
-                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setField("avatarFile", event.target.files?.[0] || null)} />
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => {
+                      const nextFile = event.target.files?.[0] || null;
+                      setField("avatarFile", nextFile);
+                      setAvatarDraftName(nextFile?.name || "");
+                    }}
+                  />
                 </label>
               </div>
 
