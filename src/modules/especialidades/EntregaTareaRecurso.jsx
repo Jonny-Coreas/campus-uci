@@ -5,6 +5,7 @@ import {
   submitEntregaTarea,
 } from "../../services/clasesTareasService";
 import { buildDraftKey, useLocalDraft } from "../../hooks/useLocalDraft";
+import { parseTaskInstructions } from "../../utils/taskMetadata";
 
 function formatDate(value) {
   if (!value) return "Sin fecha";
@@ -35,6 +36,7 @@ export default function EntregaTareaRecurso({
   const profileId = profile?.id || null;
   const userId = profile?.user_id || session?.user?.id || null;
   const recursoId = profileId || userId;
+  const tareaDetalle = parseTaskInstructions(tarea?.instrucciones || "");
   const draftKey = buildDraftKey("entregaTareaRecurso", recursoId, especialidad?.id, tarea?.id);
   const { hasDraft, clearDraft } = useLocalDraft({
     key: draftKey,
@@ -138,6 +140,38 @@ export default function EntregaTareaRecurso({
         <article className="academic-panel">
           <div className="academic-panel-head compact">
             <div>
+              <span>Detalle de tarea</span>
+              <h3>Instrucciones</h3>
+            </div>
+          </div>
+
+          <div className="delivery-review-card">
+            <span className={`academic-status ${entrega?.estado || "pendiente"}`}>
+              {entrega?.estado || "pendiente"}
+            </span>
+            <h4>{tarea?.titulo || "Tarea académica"}</h4>
+            <p>{tareaDetalle.description || "Sin instrucciones adicionales."}</p>
+            <small>Fecha límite: {tarea?.fecha_limite || "Sin fecha"} · {Number(tarea?.puntaje || 0)} puntos</small>
+
+            {tareaDetalle.attachments.length ? (
+              <div className="delivery-feedback-box">
+                <FileUp size={18} strokeWidth={1.9} aria-hidden="true" />
+                <div>
+                  <strong>Adjuntos del docente</strong>
+                  {tareaDetalle.attachments.map((attachment) => (
+                    <a key={attachment.url} className="delivery-link" href={attachment.url} target="_blank" rel="noreferrer">
+                      Descargar {attachment.nombre || "archivo"} <ExternalLink size={14} strokeWidth={2} aria-hidden="true" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </article>
+
+        <article className="academic-panel">
+          <div className="academic-panel-head compact">
+            <div>
               <span>Evidencia</span>
               <h3>{entrega ? "Actualizar entrega" : "Enviar entrega"}</h3>
             </div>
@@ -176,6 +210,7 @@ export default function EntregaTareaRecurso({
               Archivo de evidencia
               <input
                 type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
                 onChange={(event) => {
                   const nextFile = event.target.files?.[0] || null;
                   setFile(nextFile);

@@ -1,5 +1,6 @@
 import { supabase } from "../supabaseClient";
 import { getExpedientesByEspecialidad } from "./especialidadService";
+import { normalizeRole } from "../auth/roles";
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
@@ -112,7 +113,8 @@ export async function updateAsistencia(id, payload) {
 
 export async function getRecursosAsistenciaByClase(clase) {
   if (!clase?.especialidad_id) return [];
-  return getExpedientesByEspecialidad(clase.especialidad_id);
+  const rows = await getExpedientesByEspecialidad(clase.especialidad_id);
+  return rows.filter((item) => normalizeRole(item?.rol) === "recurso");
 }
 
 export async function getResumenAsistencia({ profileId, especialidadId }) {

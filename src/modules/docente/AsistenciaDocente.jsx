@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, CalendarDays, Save } from "lucide-react";
 import {
   getAsistenciaByClase,
   getProximasClasesAcademicas,
   getRecursosAsistenciaByClase,
   registrarAsistencia,
 } from "../../services/asistenciaService";
+import { getEspecialidadesPermitidas } from "../../services/docenteService";
 import { buildDraftKey, useLocalDraft } from "../../hooks/useLocalDraft";
 
 const ESTADOS = [
@@ -30,9 +31,11 @@ function isAsistenciaDraftEmpty(value) {
     && entries.every((item) => !String(item?.comentario || "").trim() && (item?.estado || "ausente") === "ausente");
 }
 
-export default function AsistenciaDocente({ profile = null, onBack = null }) {
+export default function AsistenciaDocente({ profile = null, especialidades = [], onBack = null }) {
   const [clases, setClases] = useState([]);
   const [selectedClaseId, setSelectedClaseId] = useState("");
+  const [especialidadId, setEspecialidadId] = useState("");
+  const [especialidadesPermitidas, setEspecialidadesPermitidas] = useState([]);
   const [recursos, setRecursos] = useState([]);
   const [asistenciaMap, setAsistenciaMap] = useState({});
   const [loading, setLoading] = useState(false);
@@ -56,8 +59,25 @@ export default function AsistenciaDocente({ profile = null, onBack = null }) {
   });
 
   useEffect(() => {
+    let alive = true;
+
+    async function loadPermitidas() {
+      const rows = await getEspecialidadesPermitidas(profile, especialidades);
+      if (!alive) return;
+      setEspecialidadesPermitidas(rows);
+      setEspecialidadId((current) => (rows.some((item) => item.id === current) ? current : rows[0]?.id || ""));
+    }
+
+    loadPermitidas();
+    return () => {
+      alive = false;
+    };
+  }, [especialidades, profile]);
+
+  useEffect(() => {
     loadClases();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [especialidadId]);
 
   useEffect(() => {
     loadClaseData();
@@ -69,9 +89,15 @@ export default function AsistenciaDocente({ profile = null, onBack = null }) {
     setMessage("");
 
     try {
-      const data = await getProximasClasesAcademicas();
+      if (!especialidadId) {
+        setClases([]);
+        setSelectedClaseId("");
+        return;
+      }
+
+      const data = await getProximasClasesAcademicas(especialidadId);
       setClases(data);
-      setSelectedClaseId((current) => current || data?.[0]?.id || "");
+      setSelectedClaseId((current) => (data.some((clase) => clase.id === current) ? current : data?.[0]?.id || ""));
     } catch (error) {
       console.error("[Campus UCI] Error cargando clases para asistencia:", error);
       setMessage(error.message || "No se pudieron cargar las clases.");
@@ -192,6 +218,18 @@ export default function AsistenciaDocente({ profile = null, onBack = null }) {
               </button>
             </div>
           ) : null}
+          <label>
+            Especialidad
+            <span className="academic-inline-select">
+              <CalendarDays size={16} strokeWidth={2} aria-hidden="true" />
+              <select value={especialidadId} onChange={(event) => setEspecialidadId(event.target.value)}>
+                {especialidadesPermitidas.map((especialidad) => (
+                  <option key={especialidad.id} value={especialidad.id}>{especialidad.nombre}</option>
+                ))}
+              </select>
+            </span>
+          </label>
+
           <label>
             Clase
             <select value={selectedClaseId} onChange={(event) => setSelectedClaseId(event.target.value)}>

@@ -1157,6 +1157,19 @@ button { font: inherit; }
   font-weight: 850;
 }
 
+.academic-check-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #334155;
+  font-weight: 850;
+}
+
+.academic-check-row input {
+  width: 18px;
+  height: 18px;
+}
+
 .academic-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2303,6 +2316,18 @@ button { font: inherit; }
   color: #334155;
   font-size: 13px;
   font-weight: 760;
+}
+
+.resources-filter-select {
+  min-height: 46px;
+  border: 1px solid #dbeafe;
+  border-radius: 15px;
+  background: #ffffff;
+  color: #10213f;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 850;
 }
 
 .resources-table td strong,
@@ -5319,6 +5344,78 @@ button { font: inherit; }
   text-decoration: none;
 }
 
+.moodle-clickable-item {
+  cursor: pointer;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+
+.moodle-clickable-item:hover,
+.moodle-clickable-item:focus-visible {
+  border-color: #93c5fd;
+  box-shadow: 0 14px 28px rgba(29, 78, 216, .12);
+  outline: none;
+  transform: translateY(-2px);
+}
+
+.assignment-detail-modal {
+  width: min(860px, 94vw);
+}
+
+.forum-detail {
+  display: grid;
+  gap: 16px;
+}
+
+.forum-response-list {
+  display: grid;
+  gap: 10px;
+}
+
+.forum-response-card {
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  background: #f8fbff;
+  padding: 14px;
+}
+
+.forum-response-card strong,
+.forum-response-card small {
+  display: block;
+}
+
+.forum-response-card strong {
+  color: #102a63;
+  font-weight: 900;
+}
+
+.forum-response-card small {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.forum-reply-form {
+  display: grid;
+  gap: 12px;
+}
+
+.forum-reply-form label {
+  display: grid;
+  gap: 7px;
+  color: #334155;
+  font-weight: 850;
+}
+
+.forum-reply-form textarea {
+  width: 100%;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  border-radius: 14px;
+  padding: 12px;
+  font: inherit;
+  resize: vertical;
+}
+
 .content-admin-toolbar {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5455,8 +5552,31 @@ button { font: inherit; }
   background: #eef6ff;
 }
 
+.content-list article {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.content-list article > div {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.content-list article strong,
+.content-list article small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.content-list article button {
+  flex: 0 0 auto;
+  min-width: 40px;
+}
+
 .content-list.compact article {
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  display: flex;
 }
 
 .cu-success {

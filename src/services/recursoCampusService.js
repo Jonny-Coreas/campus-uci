@@ -4,6 +4,19 @@ function todayDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function isUpcomingClass(clase) {
+  const estado = String(clase?.estado || "programada").toLowerCase();
+  if (["realizada", "finalizada", "cancelada"].includes(estado)) return false;
+  if (!clase?.fecha) return false;
+
+  const today = todayDate();
+  if (String(clase.fecha).slice(0, 10) > today) return true;
+  if (String(clase.fecha).slice(0, 10) < today) return false;
+
+  if (!clase.hora_fin) return true;
+  return String(clase.hora_fin).slice(0, 5) >= new Date().toTimeString().slice(0, 5);
+}
+
 function recentDate(days = 14) {
   const date = new Date();
   date.setDate(date.getDate() - days);
@@ -91,7 +104,7 @@ async function getClases(especialidadId) {
     .order("hora_inicio", { ascending: true });
 
   if (error) throw error;
-  return data || [];
+  return (data || []).filter(isUpcomingClass);
 }
 
 async function getTareas(especialidadId) {

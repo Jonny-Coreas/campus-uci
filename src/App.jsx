@@ -43,6 +43,8 @@ import DocenteEvaluaciones from "./modules/docente/DocenteEvaluaciones";
 import DocenteAsistencia from "./modules/docente/DocenteAsistencia";
 import DocenteCronograma from "./modules/docente/DocenteCronograma";
 import DocenteMateriales from "./modules/docente/DocenteMateriales";
+import DocenteRecursos from "./modules/docente/DocenteRecursos";
+import DocenteTareas from "./modules/docente/DocenteTareas";
 import CronogramaAcademico from "./modules/campus/CronogramaAcademico";
 import IndexCarpetaAcademica from "./CarpetaAcademica/IndexCarpetaAcademica";
 import { isAdmin, isAdminOrJefe, isDocente, isRecurso, normalizeRole } from "./auth/roles";
@@ -1990,6 +1992,11 @@ export default function App() {
       return;
     }
 
+    if (label === "Tareas") {
+      setVista(isDocente(profile) ? "docenteTareas" : "tareasEspecialidad");
+      return;
+    }
+
     if (label === "Mensajes") {
       setVista("mensajes");
       return;
@@ -2044,6 +2051,7 @@ export default function App() {
         { label: "Calendario", onClick: () => handleSidebarNavigation("Calendario") },
         { label: "Asistencia", onClick: () => handleSidebarNavigation("Asistencia") },
         { label: "Evaluaciones", onClick: () => handleSidebarNavigation("Evaluaciones") },
+        { label: "Tareas", onClick: () => handleSidebarNavigation("Tareas") },
         { label: "Materiales", onClick: () => handleSidebarNavigation("Materiales") },
         { label: "Recursos", onClick: () => handleSidebarNavigation("Recursos") },
         { label: "Reportes", onClick: () => handleSidebarNavigation("Reportes") },
@@ -2082,6 +2090,7 @@ export default function App() {
     if (vista === "cronogramaAcademico" || vista === "docenteCronograma") return "Calendario";
     if (vista === "asistencia" || vista === "docenteAsistencia" || vista === "miAsistencia") return "Asistencia";
     if (vista === "docenteEvaluaciones" || vista === "crearEvaluacion") return "Evaluaciones";
+    if (vista === "docenteTareas" || vista === "tareasEspecialidad") return "Tareas";
     if (vista === "mensajes") return "Mensajes";
     if (vista === "reportesAcademicos") return "Reportes";
     if (vista === "contenidoAcademico") return "Contenido";
@@ -2396,7 +2405,26 @@ export default function App() {
         menuItems={getCampusMenuItems()}
         activeItem={getActiveCampusItem()}
       >
-        <DocenteAsistencia profile={profile} onBack={() => setVista("dashboard")} />
+        <DocenteAsistencia profile={profile} especialidades={especialidades} onBack={() => setVista("dashboard")} />
+      </EspecialidadAdminModuleLayout>
+    );
+  }
+
+  if (vista === "docenteTareas" && isDocente(profile)) {
+    return (
+      <EspecialidadAdminModuleLayout
+        session={session}
+        profile={profile}
+        onBack={() => setVista("dashboard")}
+        onLogout={handleLogout}
+        menuItems={getCampusMenuItems()}
+        activeItem={getActiveCampusItem()}
+      >
+        <DocenteTareas
+          profile={profile}
+          especialidades={especialidades}
+          onBack={() => setVista("dashboard")}
+        />
       </EspecialidadAdminModuleLayout>
     );
   }
@@ -2450,7 +2478,7 @@ export default function App() {
         menuItems={getCampusMenuItems()}
         activeItem={getActiveCampusItem()}
       >
-        <RecursosAdmin
+        <DocenteRecursos
           session={session}
           profile={profile}
           especialidades={especialidades}
@@ -2470,7 +2498,7 @@ export default function App() {
         menuItems={getCampusMenuItems()}
         activeItem={getActiveCampusItem()}
       >
-        <DocenteAsistencia profile={profile} onBack={() => setVista("dashboard")} />
+        <DocenteAsistencia profile={profile} especialidades={especialidades} onBack={() => setVista("dashboard")} />
       </EspecialidadAdminModuleLayout>
     );
   }
@@ -2607,6 +2635,8 @@ export default function App() {
       >
         <AsignaturaDetalle
           asignatura={asignaturaActiva}
+          session={session}
+          profile={profile}
           onBack={() => setVista("campusAsignaturas")}
         />
       </EspecialidadAdminModuleLayout>
@@ -2692,6 +2722,7 @@ export default function App() {
         onOpenReportes={() => setVista("reportesAcademicos")}
         onOpenContenido={() => setVista("docenteMateriales")}
         onOpenRecursos={() => setVista("recursosDocente")}
+        onOpenTareas={() => setVista("docenteTareas")}
       />
     );
   }

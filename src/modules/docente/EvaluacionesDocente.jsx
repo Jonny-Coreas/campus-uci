@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, BookOpenCheck, Save } from "lucide-react";
 import {
+  getEspecialidadesPermitidas,
   getRecursosEvaluacion,
   registrarNota,
 } from "../../services/docenteService";
@@ -34,6 +35,7 @@ export default function EvaluacionesDocente({
   const [recursos, setRecursos] = useState([]);
   const [evaluaciones, setEvaluaciones] = useState([]);
   const [loadingRecursos, setLoadingRecursos] = useState(false);
+  const [especialidadesPermitidas, setEspecialidadesPermitidas] = useState([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const draftKey = buildDraftKey(
@@ -52,6 +54,25 @@ export default function EvaluacionesDocente({
     loadRecursos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.especialidadId]);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadPermitidas() {
+      const rows = await getEspecialidadesPermitidas(profile, especialidades);
+      if (!alive) return;
+      setEspecialidadesPermitidas(rows);
+      setForm((prev) => ({
+        ...prev,
+        especialidadId: prev.especialidadId || rows[0]?.id || "",
+      }));
+    }
+
+    loadPermitidas();
+    return () => {
+      alive = false;
+    };
+  }, [especialidades, profile]);
 
   async function loadRecursos() {
     if (!form.especialidadId) {
@@ -151,13 +172,17 @@ export default function EvaluacionesDocente({
               Especialidad
               <select value={form.especialidadId} onChange={(event) => setField("especialidadId", event.target.value)} required>
                 <option value="">Seleccionar especialidad</option>
-                {especialidades.map((especialidad) => (
+                {especialidadesPermitidas.map((especialidad) => (
                   <option key={especialidad.id} value={especialidad.id}>
                     {especialidad.nombre}
                   </option>
                 ))}
               </select>
             </label>
+
+            {!especialidadesPermitidas.length ? (
+              <div className="cu-empty">No tenés especialidades asignadas para registrar evaluaciones.</div>
+            ) : null}
 
             <label>
               Recurso

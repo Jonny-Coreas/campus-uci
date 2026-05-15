@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CalendarDays } from "lucide-react";
 import ClasesVirtuales from "../especialidades/ClasesVirtuales";
+import { getEspecialidadesPermitidas } from "../../services/docenteService";
 
 function pickFirstEspecialidad(especialidades = []) {
   return especialidades.find((item) => item.activa !== false) || especialidades[0] || null;
@@ -12,17 +13,28 @@ export default function DocenteCronograma({
   onBack = null,
 }) {
   const [especialidadId, setEspecialidadId] = useState(() => pickFirstEspecialidad(especialidades)?.id || "");
+  const [especialidadesPermitidas, setEspecialidadesPermitidas] = useState([]);
 
   const selectedEspecialidad = useMemo(
-    () => especialidades.find((item) => item.id === especialidadId) || pickFirstEspecialidad(especialidades),
-    [especialidadId, especialidades],
+    () => especialidadesPermitidas.find((item) => item.id === especialidadId) || pickFirstEspecialidad(especialidadesPermitidas),
+    [especialidadId, especialidadesPermitidas],
   );
 
   useEffect(() => {
-    if (!especialidadId && especialidades.length) {
-      setEspecialidadId(pickFirstEspecialidad(especialidades)?.id || "");
+    let alive = true;
+
+    async function loadPermitidas() {
+      const rows = await getEspecialidadesPermitidas(profile, especialidades);
+      if (!alive) return;
+      setEspecialidadesPermitidas(rows);
+      setEspecialidadId((current) => (rows.some((item) => item.id === current) ? current : rows[0]?.id || ""));
     }
-  }, [especialidadId, especialidades]);
+
+    loadPermitidas();
+    return () => {
+      alive = false;
+    };
+  }, [especialidades, profile]);
 
   return (
     <div className="academic-module-page">
@@ -37,7 +49,7 @@ export default function DocenteCronograma({
           <label className="academic-inline-select">
             <CalendarDays size={16} strokeWidth={2} aria-hidden="true" />
             <select value={selectedEspecialidad?.id || ""} onChange={(event) => setEspecialidadId(event.target.value)}>
-              {especialidades.map((item) => (
+              {especialidadesPermitidas.map((item) => (
                 <option key={item.id} value={item.id}>{item.nombre}</option>
               ))}
             </select>
@@ -59,7 +71,7 @@ export default function DocenteCronograma({
           onBack={onBack}
         />
       ) : (
-        <div className="cu-empty">No hay especialidades disponibles para programar clases.</div>
+        <div className="cu-empty">No hay especialidades asignadas para programar clases.</div>
       )}
     </div>
   );

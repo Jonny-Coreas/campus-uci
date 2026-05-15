@@ -23,6 +23,8 @@ import CampusLayout from "../../components/campus/CampusLayout";
 import AvatarUpload from "../../components/campus/AvatarUpload";
 import icuHero from "../../assets/icu-hero.png";
 import { getMiCampusData } from "../../services/recursoCampusService";
+import { parseTaskInstructions } from "../../utils/taskMetadata";
+import { isSeen, markSeen } from "../../utils/resourceSeen";
 
 function firstName(name = "Usuario") {
   return String(name || "Usuario").trim().split(/\s+/)[0] || "Usuario";
@@ -94,6 +96,7 @@ export default function MiCampus({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [detailItem, setDetailItem] = useState(null);
+  const [, setSeenVersion] = useState(0);
 
   const displayName =
     profile?.nombre ||
@@ -155,6 +158,8 @@ export default function MiCampus({
   const notasNuevas = data?.notas || [];
   const avisosRecientes = novedades.avisosRecientes || [];
   const materialesRecientes = novedades.materialesRecientes || [];
+  const avisosNoLeidos = avisosRecientes.filter((aviso) => !isSeen({ profileId: profile?.id, type: "aviso", id: aviso.id }));
+  const materialesNoVistos = materialesRecientes.filter((material) => !isSeen({ profileId: profile?.id, type: "material", id: material.id }));
   const tareasPorVencer = tareasConEntrega.filter((tarea) =>
     !tarea.entrega && (tarea.estado || "abierta") === "abierta" && isDueSoon(tarea.fecha_limite),
   );
@@ -201,6 +206,14 @@ export default function MiCampus({
 
   function openDetail(type, item) {
     if (!item) return;
+    if (type === "aviso") {
+      markSeen({ profileId: profile?.id, type: "aviso", id: item.id });
+      setSeenVersion((value) => value + 1);
+    }
+    if (type === "material") {
+      markSeen({ profileId: profile?.id, type: "material", id: item.id });
+      setSeenVersion((value) => value + 1);
+    }
     if (type === "material" && (item.archivo_url || item.enlace_url)) {
       window.open(item.archivo_url || item.enlace_url, "_blank", "noopener,noreferrer");
       return;
@@ -267,7 +280,7 @@ export default function MiCampus({
       <section className="side-block right-card">
         <div className="side-block-head">
           <h3><Bell size={22} strokeWidth={1.8} aria-hidden="true" /> Notificaciones</h3>
-          <span>{tareasPendientes.length + tareasNuevas.length + entregasRevisadas.length + notasNuevas.length + avisosRecientes.length + materialesRecientes.length}</span>
+          <span>{tareasPendientes.length + tareasNuevas.length + entregasRevisadas.length + notasNuevas.length + avisosNoLeidos.length + materialesNoVistos.length}</span>
         </div>
         <div className="event-list">
           {tareasPendientes.slice(0, 2).map((tarea) => (
@@ -288,19 +301,19 @@ export default function MiCampus({
               <div><strong>Nota registrada</strong><small>{nota.actividad || nota.area || "Evaluación"} · {nota.nota ?? "Sin nota"}</small></div>
             </article>
           ))}
-          {avisosRecientes.slice(0, 2).map((aviso) => (
+          {avisosNoLeidos.slice(0, 2).map((aviso) => (
             <article key={`aviso-${aviso.id}`} role="button" tabIndex={0} onClick={() => openDetail("aviso", aviso)} onKeyDown={(event) => event.key === "Enter" && openDetail("aviso", aviso)}>
               <Bell size={18} strokeWidth={1.8} aria-hidden="true" />
               <div><strong>{aviso.titulo}</strong><small>{aviso.asignatura_titulo || "Aviso académico"}</small></div>
             </article>
           ))}
-          {materialesRecientes.slice(0, 2).map((material) => (
+          {materialesNoVistos.slice(0, 2).map((material) => (
             <article key={`material-${material.id}`} role="button" tabIndex={0} onClick={() => openDetail("material", material)} onKeyDown={(event) => event.key === "Enter" && openDetail("material", material)}>
               <BookOpen size={18} strokeWidth={1.8} aria-hidden="true" />
               <div><strong>Material publicado</strong><small>{material.titulo} · {material.asignatura_titulo || "Asignatura"}</small></div>
             </article>
           ))}
-          {!tareasPendientes.length && !tareasNuevas.length && !entregasRevisadas.length && !notasNuevas.length && !avisosRecientes.length && !materialesRecientes.length ? (
+          {!tareasPendientes.length && !tareasNuevas.length && !entregasRevisadas.length && !notasNuevas.length && !avisosNoLeidos.length && !materialesNoVistos.length ? (
             <article>
               <Bell size={18} strokeWidth={1.8} aria-hidden="true" />
               <div><strong>Sin notificaciones</strong><small>No hay novedades académicas pendientes.</small></div>
@@ -337,7 +350,7 @@ export default function MiCampus({
       <section className="side-block right-card">
         <div className="side-block-head">
           <h3><Clock size={22} strokeWidth={1.8} aria-hidden="true" /> Próximos eventos</h3>
-          <span>{(novedades.proximasClases?.length || 0) + tareasPorVencer.length + avisosRecientes.length + materialesRecientes.length}</span>
+          <span>{(novedades.proximasClases?.length || 0) + tareasPorVencer.length + avisosNoLeidos.length + materialesNoVistos.length}</span>
         </div>
         <div className="event-list">
           {(novedades.proximasClases || []).slice(0, 3).map((clase) => (
@@ -352,19 +365,19 @@ export default function MiCampus({
               <div><strong>{tarea.titulo}</strong><small>Vence {formatDate(tarea.fecha_limite)} · {Number(tarea.puntaje || 0)} pts</small></div>
             </article>
           ))}
-          {avisosRecientes.slice(0, 2).map((aviso) => (
+          {avisosNoLeidos.slice(0, 2).map((aviso) => (
             <article key={`event-aviso-${aviso.id}`} role="button" tabIndex={0} onClick={() => openDetail("aviso", aviso)} onKeyDown={(event) => event.key === "Enter" && openDetail("aviso", aviso)}>
               <Bell size={18} strokeWidth={1.8} aria-hidden="true" />
               <div><strong>{aviso.titulo}</strong><small>{aviso.asignatura_titulo || "Aviso académico"}</small></div>
             </article>
           ))}
-          {materialesRecientes.slice(0, 2).map((material) => (
+          {materialesNoVistos.slice(0, 2).map((material) => (
             <article key={`event-material-${material.id}`} role="button" tabIndex={0} onClick={() => openDetail("material", material)} onKeyDown={(event) => event.key === "Enter" && openDetail("material", material)}>
               <BookOpen size={18} strokeWidth={1.8} aria-hidden="true" />
               <div><strong>{material.titulo}</strong><small>{material.asignatura_titulo || "Material académico"}</small></div>
             </article>
           ))}
-          {!(novedades.proximasClases || []).length && !tareasPorVencer.length && !avisosRecientes.length && !materialesRecientes.length ? (
+          {!(novedades.proximasClases || []).length && !tareasPorVencer.length && !avisosNoLeidos.length && !materialesNoVistos.length ? (
             <article>
               <Clock size={18} strokeWidth={1.8} aria-hidden="true" />
               <div><strong>Sin próximos eventos</strong><small>No hay clases, tareas por vencer ni avisos recientes.</small></div>
@@ -489,6 +502,7 @@ export default function MiCampus({
                         <article key={tarea.id} className="student-clickable-card" role="button" tabIndex={0} onClick={() => openEntrega(tarea)} onKeyDown={(event) => event.key === "Enter" && openEntrega(tarea)}>
                           <strong>{tarea.titulo}</strong>
                           <small>Límite: {formatDate(tarea.fecha_limite)} · {Number(tarea.puntaje || 0)} pts</small>
+                          {parseTaskInstructions(tarea.instrucciones || "").attachments.length ? <p>Incluye adjunto del docente.</p> : null}
                           <button type="button" onClick={(event) => { event.stopPropagation(); openEntrega(tarea); }}>
                             Entregar tarea <ArrowRight size={14} strokeWidth={2} />
                           </button>
@@ -523,13 +537,13 @@ export default function MiCampus({
 
                 <article>
                   <div className="student-news-title">
-                    <span className={novedades.avisosRecientes?.length ? "news-dot active teal" : "news-dot"} />
+                    <span className={avisosNoLeidos.length ? "news-dot active teal" : "news-dot"} />
                     <strong>Avisos recientes</strong>
-                    {novedades.avisosRecientes?.length ? <em>{novedades.avisosRecientes.length}</em> : null}
+                    {avisosNoLeidos.length ? <em>{avisosNoLeidos.length}</em> : null}
                   </div>
-                  {novedades.avisosRecientes?.length ? (
+                  {avisosRecientes.length ? (
                     <div className="student-list compact">
-                      {novedades.avisosRecientes.slice(0, 3).map((aviso) => (
+                      {avisosRecientes.slice(0, 3).map((aviso) => (
                         <article key={aviso.id} className="student-clickable-card" role="button" tabIndex={0} onClick={() => openDetail("aviso", aviso)} onKeyDown={(event) => event.key === "Enter" && openDetail("aviso", aviso)}>
                           <strong>{aviso.titulo}</strong>
                           <small>{aviso.asignatura_titulo || "Asignatura"}</small>
@@ -544,9 +558,9 @@ export default function MiCampus({
 
                 <article>
                   <div className="student-news-title">
-                    <span className={materialesRecientes.length ? "news-dot active green" : "news-dot"} />
+                    <span className={materialesNoVistos.length ? "news-dot active green" : "news-dot"} />
                     <strong>Materiales recientes</strong>
-                    {materialesRecientes.length ? <em>{materialesRecientes.length}</em> : null}
+                    {materialesNoVistos.length ? <em>{materialesNoVistos.length}</em> : null}
                   </div>
                   {materialesRecientes.length ? (
                     <div className="student-list compact">

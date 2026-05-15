@@ -8,6 +8,7 @@ import {
   ClipboardList,
   FileCheck2,
   MessageSquare,
+  Plus,
   Star,
   UsersRound,
 } from "lucide-react";
@@ -57,6 +58,7 @@ export default function DocenteDashboard({
   onOpenReportes,
   onOpenContenido,
   onOpenRecursos,
+  onOpenTareas,
 }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -77,6 +79,7 @@ export default function DocenteDashboard({
     { label: "Calendario", onClick: onOpenCronograma },
     { label: "Asistencia", onClick: onOpenAsistencia },
     { label: "Evaluaciones", onClick: onOpenEvaluaciones },
+    { label: "Tareas", onClick: onOpenTareas },
     { label: "Recursos", onClick: onOpenRecursos },
     { label: "Reportes", onClick: onOpenReportes },
     { label: "Mensajes", onClick: onOpenMensajes },
@@ -129,6 +132,7 @@ export default function DocenteDashboard({
   const accessCards = [
     { title: "Asistencia", description: "Registrar asistencia por clase y recurso.", icon: CalendarDays, action: onOpenAsistencia },
     { title: "Evaluaciones", description: "Crear evaluaciones y registrar notas.", icon: Star, action: onOpenEvaluaciones },
+    { title: "+ Nueva tarea", description: "Crear tareas visibles para recursos.", icon: Plus, action: onOpenTareas },
     { title: "Entregas", description: "Revisar evidencias pendientes.", icon: FileCheck2, action: () => document.getElementById("docente-entregas")?.scrollIntoView({ behavior: "smooth" }) },
     { title: "Contenido Académico", description: "Gestionar asignaturas, semanas, materiales y avisos.", icon: BookOpenCheck, action: onOpenContenido },
     { title: "Cronograma", description: "Consultar clases y agenda académica.", icon: ClipboardList, action: onOpenCronograma },

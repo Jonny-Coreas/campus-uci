@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import ContenidoAcademicoAdmin from "../admin/ContenidoAcademicoAdmin";
+import { useEffect, useMemo, useState } from "react";
+import RecursosAdmin from "../admin/RecursosAdmin";
 import { getEspecialidadesPermitidas } from "../../services/docenteService";
 
-export default function DocenteMateriales({ profile = null, especialidades = [], ...props }) {
+export default function DocenteRecursos({ profile = null, especialidades = [], ...props }) {
   const [especialidadesPermitidas, setEspecialidadesPermitidas] = useState([]);
 
   useEffect(() => {
@@ -19,11 +19,17 @@ export default function DocenteMateriales({ profile = null, especialidades = [],
     };
   }, [especialidades, profile]);
 
+  const allowedEspecialidadIds = useMemo(
+    () => especialidadesPermitidas.map((item) => item.id),
+    [especialidadesPermitidas],
+  );
+
   return (
-    <ContenidoAcademicoAdmin
+    <RecursosAdmin
       {...props}
       profile={profile}
       especialidades={especialidadesPermitidas}
+      allowedEspecialidadIds={allowedEspecialidadIds}
     />
   );
 }

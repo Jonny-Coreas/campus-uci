@@ -38,6 +38,7 @@ const MENU_ICONS = {
   Calendario: CalendarDays,
   Asistencia: ClipboardCheck,
   Evaluaciones: Star,
+  Tareas: ClipboardCheck,
   Materiales: BookOpen,
   Recursos: UsersRound,
   Reportes: BarChart3,

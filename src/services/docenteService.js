@@ -1,6 +1,7 @@
 import { supabase } from "../supabaseClient";
 import { getExpedientesByEspecialidad } from "./especialidadService";
 import { reviewEntregaTarea } from "./clasesTareasService";
+import { isAdminOrJefe, isDocente, normalizeRole } from "../auth/roles";
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
@@ -23,6 +24,58 @@ async function getEspecialidades() {
 
   if (error) throw error;
   return data || [];
+}
+
+export async function getEspecialidadesPermitidas(profile = null, especialidades = []) {
+  if (isAdminOrJefe(profile)) return especialidades;
+  if (!isDocente(profile)) return [];
+
+  const profileId = profile?.id || null;
+  const userIds = [...new Set([profile?.user_id, profileId].filter(Boolean))];
+  const queries = [];
+
+  if (profileId) {
+    queries.push(
+      supabase
+        .from("usuario_especialidad")
+        .select("especialidad_id, activo")
+        .eq("profile_id", profileId),
+    );
+  }
+
+  if (userIds.length) {
+    queries.push(
+      supabase
+        .from("usuario_especialidad")
+        .select("especialidad_id, activo")
+        .in("user_id", userIds),
+    );
+  }
+
+  const results = await Promise.all(
+    queries.map((query) =>
+      query.then(({ data, error }) => {
+        if (error) {
+          console.warn("[Campus UCI] No se pudieron cargar especialidades del docente:", error);
+          return [];
+        }
+        return data || [];
+      }),
+    ),
+  );
+
+  const allowedIds = new Set(
+    results
+      .flat()
+      .filter((item) => item.activo !== false && item.especialidad_id)
+      .map((item) => item.especialidad_id),
+  );
+
+  return especialidades.filter((item) => allowedIds.has(item.id));
+}
+
+function onlyRecursos(rows = []) {
+  return rows.filter((item) => normalizeRole(item?.rol) === "recurso");
 }
 
 export async function getMisClases(profile = null) {
@@ -130,7 +183,8 @@ export async function reviewEntrega(id, form) {
 
 export async function getRecursosEvaluacion(especialidadId) {
   if (!especialidadId) return [];
-  return getExpedientesByEspecialidad(especialidadId);
+  const rows = await getExpedientesByEspecialidad(especialidadId);
+  return onlyRecursos(rows);
 }
 
 export async function createEvaluacion(payload) {

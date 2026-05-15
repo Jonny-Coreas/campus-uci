@@ -86,10 +86,12 @@ export default function RecursosAdmin({
   session = null,
   profile = null,
   especialidades = [],
+  allowedEspecialidadIds = null,
   onBack = null,
 }) {
   const [recursos, setRecursos] = useState([]);
   const [query, setQuery] = useState("");
+  const [especialidadFilter, setEspecialidadFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -125,14 +127,20 @@ export default function RecursosAdmin({
   }, []);
 
   const filteredRecursos = useMemo(() => {
+    const scopedResources = Array.isArray(allowedEspecialidadIds)
+      ? recursos.filter((item) => allowedEspecialidadIds.includes(item.especialidad_id))
+      : recursos;
+    const byEspecialidad = especialidadFilter
+      ? scopedResources.filter((item) => item.especialidad_id === especialidadFilter)
+      : scopedResources;
     const term = query.trim().toLowerCase();
-    if (!term) return recursos;
+    if (!term) return byEspecialidad;
 
-    return recursos.filter((item) =>
+    return byEspecialidad.filter((item) =>
       [item.nombre, item.correo, item.cum, item.especialidad_nombre, item.servicio, item.area]
         .some((value) => String(value || "").toLowerCase().includes(term)),
     );
-  }, [query, recursos]);
+  }, [allowedEspecialidadIds, especialidadFilter, query, recursos]);
 
   async function loadRecursos() {
     setLoading(true);
@@ -300,6 +308,16 @@ export default function RecursosAdmin({
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
+          <select
+            className="resources-filter-select"
+            value={especialidadFilter}
+            onChange={(event) => setEspecialidadFilter(event.target.value)}
+          >
+            <option value="">Todas las especialidades</option>
+            {especialidades.map((especialidad) => (
+              <option key={especialidad.id} value={especialidad.id}>{especialidad.nombre}</option>
+            ))}
+          </select>
           <span>{filteredRecursos.length} recursos</span>
         </div>
 

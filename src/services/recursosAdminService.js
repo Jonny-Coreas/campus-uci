@@ -19,8 +19,7 @@ function coerceAcademicRole(value) {
 }
 
 function isAcademicResource(profile) {
-  const role = normalizeRole(profile?.rol || "recurso");
-  return !["admin", "jefe", "supervisor"].includes(role);
+  return normalizeRole(profile?.rol) === "recurso";
 }
 
 function sanitizeFileName(name = "avatar") {
