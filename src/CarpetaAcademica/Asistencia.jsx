@@ -30,6 +30,7 @@ export default function Asistencia({
   recurso = null,
   profile = null,
   embedded = true,
+  readOnly = false,
 }) {
   const especialidadId = especialidad?.id || null;
   const recursoId = recurso?.profile_id || recurso?.id || null;
@@ -43,11 +44,11 @@ export default function Asistencia({
   useEffect(() => {
     cargarAsistencia();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [especialidadId, recursoId]);
+  }, [especialidadId, recursoId, readOnly]);
 
   async function cargarAsistencia() {
     if (!especialidadId || !recursoId) {
-      setRows(DEMO_ROWS.map((row, index) => ({ ...row, id: `demo-${index}` })));
+      setRows(readOnly ? [] : DEMO_ROWS.map((row, index) => ({ ...row, id: `demo-${index}` })));
       return;
     }
 
@@ -70,7 +71,7 @@ export default function Asistencia({
     } catch (error) {
       console.error("Error cargando asistencia:", error);
       alert(`No se pudo cargar asistencia: ${error.message || error}`);
-      setRows(DEMO_ROWS.map((row, index) => ({ ...row, id: `demo-${index}` })));
+      setRows(readOnly ? [] : DEMO_ROWS.map((row, index) => ({ ...row, id: `demo-${index}` })));
     } finally {
       setLoading(false);
     }
@@ -86,6 +87,7 @@ export default function Asistencia({
   }
 
   function startEdit(row) {
+    if (readOnly) return;
     setEditingId(row.id);
     setForm({
       fecha: row.fecha || new Date().toISOString().slice(0, 10),
@@ -100,6 +102,7 @@ export default function Asistencia({
 
   async function guardar(e) {
     e.preventDefault();
+    if (readOnly) return;
 
     if (!form.fecha) return alert("Falta la fecha.");
     if (!form.actividad.trim()) return alert("Falta la actividad.");
@@ -164,6 +167,7 @@ export default function Asistencia({
   }
 
   async function borrar(row) {
+    if (readOnly) return;
     const ok = window.confirm("¿Seguro que querés borrar este registro de asistencia?");
     if (!ok) return;
 
@@ -225,23 +229,27 @@ export default function Asistencia({
             <div style={labelStyle}>CARPETA ACTIVA</div>
             <h2 style={titleStyle}>🗂️ Asistencia</h2>
             <p style={subtitleStyle}>
-              Registro de asistencia conectado automáticamente al cronograma académico.
+              {readOnly
+                ? "Consulta de asistencia personal registrada por el equipo académico."
+                : "Registro de asistencia conectado automáticamente al cronograma académico."}
               {recurso?.nombre ? ` Expediente de ${recurso.nombre}.` : ""}
             </p>
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <span style={badgeStyle}>{especialidad?.nombre || "Especialidad"}</span>
-            <button
-              type="button"
-              onClick={() => {
-                resetForm();
-                setShowForm((prev) => !prev);
-              }}
-              style={btnPrimary}
-            >
-              {showForm ? "Cerrar" : "+ Registro manual"}
-            </button>
+            {!readOnly ? (
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setShowForm((prev) => !prev);
+                }}
+                style={btnPrimary}
+              >
+                {showForm ? "Cerrar" : "+ Registro manual"}
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -257,7 +265,7 @@ export default function Asistencia({
           </div>
         </div>
 
-        {showForm ? (
+        {showForm && !readOnly ? (
           <form onSubmit={guardar} style={formCardStyle}>
             <h3 style={formTitleStyle}>{editingId ? "Editar asistencia" : "Nuevo registro de asistencia"}</h3>
 
@@ -368,14 +376,14 @@ export default function Asistencia({
                   <th style={thStyle}>Modalidad</th>
                   <th style={thStyle}>Estado</th>
                   <th style={thStyle}>Observaciones</th>
-                  <th style={thStyle}>Acción</th>
+                  {!readOnly ? <th style={thStyle}>Acción</th> : null}
                 </tr>
               </thead>
 
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={tdStyle}>No hay registros de asistencia todavía.</td>
+                    <td colSpan={readOnly ? 6 : 7} style={tdStyle}>No hay registros de asistencia todavía.</td>
                   </tr>
                 ) : (
                   rows.map((row) => (
@@ -390,14 +398,16 @@ export default function Asistencia({
                         {estadoIcon(row.estado)} {row.estado || "—"}
                       </td>
                       <td style={tdStyle}>{row.observaciones || "—"}</td>
-                      <td style={tdActionStyle}>
-                        <button type="button" onClick={() => startEdit(row)} style={btnTinyBlue}>
-                          Editar
-                        </button>
-                        <button type="button" onClick={() => borrar(row)} style={btnTinyRed}>
-                          Borrar
-                        </button>
-                      </td>
+                      {!readOnly ? (
+                        <td style={tdActionStyle}>
+                          <button type="button" onClick={() => startEdit(row)} style={btnTinyBlue}>
+                            Editar
+                          </button>
+                          <button type="button" onClick={() => borrar(row)} style={btnTinyRed}>
+                            Borrar
+                          </button>
+                        </td>
+                      ) : null}
                     </tr>
                   ))
                 )}

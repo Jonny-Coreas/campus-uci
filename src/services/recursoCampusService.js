@@ -4,6 +4,12 @@ function todayDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function recentDate(days = 14) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return date.toISOString();
+}
+
 function uniqueById(items) {
   const map = new Map();
   items.filter(Boolean).forEach((item) => {
@@ -14,7 +20,8 @@ function uniqueById(items) {
 
 async function getAsignacionActiva({ profile, session }) {
   const profileId = profile?.id || null;
-  const userId = profile?.user_id || session?.user?.id || null;
+  const authUserId = session?.user?.id || null;
+  const userIds = [...new Set([profile?.user_id, authUserId, profileId].filter(Boolean))];
   const candidates = [];
 
   if (profileId) {
@@ -23,39 +30,34 @@ async function getAsignacionActiva({ profile, session }) {
         .from("usuario_especialidad")
         .select("id, profile_id, user_id, especialidad_id, progreso, activo, estado, created_at")
         .eq("profile_id", profileId)
-        .neq("activo", false)
         .order("created_at", { ascending: false })
         .limit(1),
     );
   }
 
-  if (userId) {
+  if (userIds.length) {
     candidates.push(
       supabase
         .from("usuario_especialidad")
         .select("id, profile_id, user_id, especialidad_id, progreso, activo, estado, created_at")
-        .eq("user_id", userId)
-        .neq("activo", false)
+        .in("user_id", userIds)
         .order("created_at", { ascending: false })
-        .limit(1),
-    );
-  }
-
-  if (profileId) {
-    candidates.push(
-      supabase
-        .from("usuario_especialidad")
-        .select("id, profile_id, user_id, especialidad_id, progreso, activo, estado, created_at")
-        .eq("user_id", profileId)
-        .neq("activo", false)
-        .order("created_at", { ascending: false })
-        .limit(1),
+        .limit(3),
     );
   }
 
   for (const query of candidates) {
     const { data, error } = await query;
-    if (!error && data?.[0]) return data[0];
+    const activeAssignment = (data || []).find((item) => item.activo !== false && item.especialidad_id);
+    if (!error && activeAssignment) {
+      console.info("[Campus UCI] Asignación recurso resuelta:", {
+        assignmentId: activeAssignment.id,
+        profileId,
+        authUserId,
+        especialidadId: activeAssignment.especialidad_id,
+      });
+      return activeAssignment;
+    }
     if (error) {
       console.warn("[Campus UCI] No se pudo consultar asignación del recurso:", error);
     }
@@ -103,6 +105,97 @@ async function getTareas(especialidadId) {
 
   if (error) throw error;
   return data || [];
+}
+
+async function getAsignaturas(especialidadId) {
+  if (!especialidadId) return [];
+
+  const { data, error } = await supabase
+    .from("especialidad_asignaturas")
+    .select("id, especialidad_id, titulo, descripcion, imagen_url, orden, publicado, created_at")
+    .eq("especialidad_id", especialidadId)
+    .eq("publicado", true)
+    .order("orden", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.warn("[Campus UCI] No se pudieron cargar asignaturas del recurso:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+async function getSecciones(asignaturas) {
+  const asignaturaIds = asignaturas.map((item) => item.id).filter(Boolean);
+  if (!asignaturaIds.length) return [];
+
+  const { data, error } = await supabase
+    .from("especialidad_asignatura_secciones")
+    .select("id, asignatura_id, titulo, tipo, descripcion, orden, publicado")
+    .in("asignatura_id", asignaturaIds)
+    .eq("publicado", true)
+    .order("orden", { ascending: true });
+
+  if (error) {
+    console.warn("[Campus UCI] No se pudieron cargar secciones del recurso:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+async function getAvisos(especialidadId, asignaturas, secciones = []) {
+  if (!especialidadId || !asignaturas.length) return [];
+  const asignaturaIds = asignaturas.map((item) => item.id).filter(Boolean);
+  const asignaturasById = new Map(asignaturas.map((item) => [item.id, item]));
+  const seccionesById = new Map(secciones.map((item) => [item.id, item]));
+
+  const { data, error } = await supabase
+    .from("especialidad_avisos")
+    .select("*")
+    .in("asignatura_id", asignaturaIds)
+    .eq("publicado", true)
+    .gte("created_at", recentDate(45))
+    .order("created_at", { ascending: false })
+    .limit(8);
+
+  if (error) {
+    console.warn("[Campus UCI] No se pudieron cargar avisos del recurso:", error);
+    return [];
+  }
+
+  return (data || []).map((item) => ({
+    ...item,
+    asignatura_titulo: asignaturasById.get(item.asignatura_id)?.titulo || "Asignatura",
+    seccion_titulo: seccionesById.get(item.seccion_id)?.titulo || "",
+  }));
+}
+
+async function getMateriales(especialidadId, asignaturas, secciones = []) {
+  if (!especialidadId || !asignaturas.length) return [];
+  const asignaturaIds = asignaturas.map((item) => item.id).filter(Boolean);
+  const asignaturasById = new Map(asignaturas.map((item) => [item.id, item]));
+  const seccionesById = new Map(secciones.map((item) => [item.id, item]));
+
+  const { data, error } = await supabase
+    .from("especialidad_materiales")
+    .select("*")
+    .in("asignatura_id", asignaturaIds)
+    .eq("publicado", true)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (error) {
+    console.warn("[Campus UCI] No se pudieron cargar materiales del recurso:", error);
+    return [];
+  }
+
+  return (data || []).map((item) => ({
+    ...item,
+    asignatura_titulo: asignaturasById.get(item.asignatura_id)?.titulo || "Asignatura",
+    seccion_titulo: seccionesById.get(item.seccion_id)?.titulo || "",
+  }));
 }
 
 async function getEntregas({ tareas, profile, session }) {
@@ -196,26 +289,60 @@ export async function getMiCampusData({ profile, session }) {
   const especialidad = await getEspecialidad(asignacion?.especialidad_id);
   const especialidadId = especialidad?.id || asignacion?.especialidad_id || null;
 
-  const [clases, tareas, notas] = await Promise.all([
+  if (!especialidadId) {
+    console.warn("[Campus UCI] Recurso sin especialidad activa resuelta:", {
+      profileId: profile?.id,
+      profileUserId: profile?.user_id,
+      authUserId: session?.user?.id,
+    });
+  }
+
+  const [clasesBase, tareas, notas, asignaturas] = await Promise.all([
     getClases(especialidadId),
     getTareas(especialidadId),
     getNotas({ especialidadId, profile }),
+    getAsignaturas(especialidadId),
   ]);
 
+  const secciones = await getSecciones(asignaturas);
+  const asignaturasById = new Map(asignaturas.map((item) => [item.id, item]));
+  const seccionesById = new Map(secciones.map((item) => [item.id, item]));
+  const clases = clasesBase.map((clase) => ({
+    ...clase,
+    asignatura_titulo: asignaturasById.get(clase.asignatura_id)?.titulo || "",
+    seccion_titulo: seccionesById.get(clase.seccion_id)?.titulo || "",
+  }));
+
+  const [avisos, materiales] = await Promise.all([
+    getAvisos(especialidadId, asignaturas, secciones),
+    getMateriales(especialidadId, asignaturas, secciones),
+  ]);
   const entregas = await getEntregas({ tareas, profile, session });
   const entregasByTarea = new Map(entregas.map((item) => [item.tarea_id, item]));
-  const tareasPendientes = tareas.filter((tarea) => !entregasByTarea.has(tarea.id));
+  const tareasAbiertas = tareas.filter((tarea) => (tarea.estado || "abierta") === "abierta");
+  const tareasPendientes = tareasAbiertas.filter((tarea) => !entregasByTarea.has(tarea.id));
   const tareasEntregadas = tareas.filter((tarea) => entregasByTarea.has(tarea.id));
   const aprobadas = entregas.filter((item) => item.estado === "aprobada");
   const rechazadas = entregas.filter((item) => item.estado === "rechazada");
   const promedio = calculatePromedio(notas);
   const progreso = calculateProgress({ asignacion, tareas, entregas, promedio });
+  const novedades = {
+    tareasPendientes: tareasPendientes.slice(0, 5),
+    proximasClases: clases.slice(0, 5),
+    avisosRecientes: avisos.slice(0, 5),
+    materialesRecientes: materiales.slice(0, 5),
+  };
 
   return {
     asignacion,
     especialidad,
     clases,
     tareas,
+    asignaturas,
+    secciones,
+    avisos,
+    materiales,
+    novedades,
     entregas,
     entregasByTarea,
     notas,

@@ -3,6 +3,7 @@ import Evaluaciones from "./Evaluaciones";
 import Capacitaciones from "./Capacitaciones";
 import Asistencia from "./Asistencia";
 import MisNotas from "./MisNotas";
+import { isAdminOrJefe, isDocente, isRecurso } from "../auth/roles";
 
 const CARPETAS = [
   {
@@ -44,6 +45,8 @@ export default function IndexCarpetaAcademica({
   onBack = null,
 }) {
   const [carpetaActiva, setCarpetaActiva] = useState("evaluaciones");
+  const canManageAcademic = isAdminOrJefe(profile) || isDocente(profile);
+  const readOnly = profile ? isRecurso(profile) : false;
 
   const carpeta = useMemo(() => {
     return CARPETAS.find((item) => item.key === carpetaActiva) || CARPETAS[0];
@@ -61,8 +64,10 @@ export default function IndexCarpetaAcademica({
 
           <p style={subtitleStyle}>
             {especialidad?.nombre
-              ? `Gestión académica de ${especialidad.nombre}`
-              : "Gestión académica hospitalaria por especialidad"}
+              ? `${readOnly ? "Expediente e historial académico de" : "Gestión académica de"} ${especialidad.nombre}`
+              : readOnly
+                ? "Expediente académico hospitalario de consulta"
+                : "Gestión académica hospitalaria por especialidad"}
 
             {recurso?.nombre
               ? ` · Expediente de ${recurso.nombre}`
@@ -119,6 +124,27 @@ export default function IndexCarpetaAcademica({
         </aside>
 
         <main style={mainStyle}>
+          {readOnly ? (
+            <section style={summaryStyle}>
+              <div style={summaryAvatarStyle}>
+                {String(recurso?.nombre || profile?.nombre || "U").slice(0, 1).toUpperCase()}
+              </div>
+
+              <div style={{ minWidth: 0 }}>
+                <div style={summaryLabelStyle}>Vista de consulta</div>
+                <h2 style={summaryTitleStyle}>
+                  {recurso?.nombre || profile?.nombre || "Recurso en formación"}
+                </h2>
+                <p style={summaryTextStyle}>
+                  CUM: {recurso?.cum || profile?.cum || "No asignado"} · Especialidad:{" "}
+                  {especialidad?.nombre || "Sin especialidad asignada"}
+                </p>
+              </div>
+
+              <div style={summaryBadgeStyle}>Solo lectura</div>
+            </section>
+          ) : null}
+
           <div style={activeHeaderStyle}>
             <div>
               <div style={activeLabelStyle}>
@@ -143,6 +169,8 @@ export default function IndexCarpetaAcademica({
               evaluacionActiva={evaluacionActiva}
               setEvaluacionActiva={setEvaluacionActiva}
               embedded={true}
+              readOnly={readOnly}
+              canManageAcademic={canManageAcademic}
             />
           </div>
         </main>
@@ -264,6 +292,63 @@ const mainStyle = {
   minWidth: 0,
   display: "grid",
   gap: 14,
+};
+
+const summaryStyle = {
+  display: "grid",
+  gridTemplateColumns: "auto minmax(0, 1fr) auto",
+  alignItems: "center",
+  gap: 14,
+  border: "1px solid #dbeafe",
+  borderRadius: 22,
+  background: "linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)",
+  padding: 16,
+  boxShadow: "0 10px 24px rgba(15, 23, 42, 0.06)",
+};
+
+const summaryAvatarStyle = {
+  width: 56,
+  height: 56,
+  borderRadius: 18,
+  background: "linear-gradient(135deg, #2563eb, #0f766e)",
+  color: "white",
+  display: "grid",
+  placeItems: "center",
+  fontWeight: 900,
+  fontSize: 22,
+  boxShadow: "0 12px 24px rgba(37, 99, 235, 0.2)",
+};
+
+const summaryLabelStyle = {
+  color: "#0284c7",
+  fontSize: 12,
+  fontWeight: 900,
+  letterSpacing: 1.1,
+  textTransform: "uppercase",
+};
+
+const summaryTitleStyle = {
+  margin: "3px 0",
+  color: "#0f2f68",
+  fontSize: 22,
+  lineHeight: 1.1,
+};
+
+const summaryTextStyle = {
+  margin: 0,
+  color: "#64748b",
+  fontSize: 13,
+  fontWeight: 700,
+};
+
+const summaryBadgeStyle = {
+  border: "1px solid #bfdbfe",
+  borderRadius: 999,
+  background: "#eff6ff",
+  color: "#1d4ed8",
+  fontSize: 12,
+  fontWeight: 900,
+  padding: "8px 12px",
 };
 
 const activeHeaderStyle = {

@@ -18,7 +18,7 @@ function isMissingAvatarBucket(error) {
 
 export function buildFallbackProfile(session) {
   return {
-    nombre: "Jonathan Villalobos",
+    nombre: session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || "Usuario Campus UCI",
     correo: session?.user?.email || "",
     rol: "personal",
     cum: "Sin CUM",

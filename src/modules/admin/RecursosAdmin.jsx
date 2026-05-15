@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Pencil, Plus, Search, UserCheck, UserX } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Pencil, Plus, Search, Trash2, UserCheck, UserX } from "lucide-react";
 import AvatarUpload from "../../components/campus/AvatarUpload";
 import {
   createRecurso,
+  deleteRecursoDefinitivo,
   getRecursos,
   toggleActivo,
   updateRecurso,
 } from "../../services/recursosAdminService";
 import { buildDraftKey, useLocalDraft } from "../../hooks/useLocalDraft";
+import { isAdminOrJefe } from "../../auth/roles";
 
 const initialForm = {
   id: "",
@@ -15,6 +17,7 @@ const initialForm = {
   nombre: "",
   correo: "",
   password: "",
+  rol: "recurso",
   cum: "",
   servicio: "UCI",
   area: "",
@@ -24,6 +27,14 @@ const initialForm = {
   avatarFile: null,
 };
 
+function normalizeAcademicRole(value) {
+  const role = String(value || "").trim().toLowerCase();
+  if (role === "admin") return "admin";
+  if (role === "jefe") return "jefe";
+  if (role === "docente") return "docente";
+  return "recurso";
+}
+
 function buildFormFromResource(resource) {
   return {
     id: resource.id || "",
@@ -31,6 +42,7 @@ function buildFormFromResource(resource) {
     nombre: resource.nombre || "",
     correo: resource.correo || "",
     password: "",
+    rol: normalizeAcademicRole(resource.rol),
     cum: resource.cum || "",
     servicio: resource.servicio || "UCI",
     area: resource.area || "",
@@ -47,6 +59,7 @@ function sanitizeResourceDraft(form, avatarFileName = "") {
     user_id: form.user_id || "",
     nombre: form.nombre || "",
     correo: form.correo || "",
+    rol: normalizeAcademicRole(form.rol),
     cum: form.cum || "",
     servicio: form.servicio || "UCI",
     area: form.area || "",
@@ -71,6 +84,7 @@ function isResourceDraftEmpty(value) {
 
 export default function RecursosAdmin({
   session = null,
+  profile = null,
   especialidades = [],
   onBack = null,
 }) {
@@ -97,12 +111,14 @@ export default function RecursosAdmin({
       setForm((prev) => ({
         ...prev,
         ...draft,
+        rol: normalizeAcademicRole(draft.rol),
         password: "",
         avatarFile: null,
       }));
       setAvatarDraftName(draft.avatarFileName || "");
     },
   });
+  const canManageResources = isAdminOrJefe(profile);
 
   useEffect(() => {
     loadRecursos();
@@ -134,7 +150,7 @@ export default function RecursosAdmin({
   }
 
   function setField(name, value) {
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: name === "rol" ? normalizeAcademicRole(value) : value }));
   }
 
   function openCreate() {
@@ -171,21 +187,35 @@ export default function RecursosAdmin({
         setMessage("Recurso actualizado correctamente.");
       } else {
         await createRecurso(form);
-        setMessage("Recurso creado con usuario de acceso y especialidad asignada.");
+        setMessage("Usuario creado con correo, contraseña temporal, profile y especialidad. Puede iniciar sesión sin confirmar correo.");
       }
 
       clearDraft();
       closeModal();
       await loadRecursos();
     } catch (error) {
-      console.error("[Campus UCI] Error guardando recurso:", error);
-      setMessage(error.message || "No se pudo guardar el recurso.");
+      const contextError = error?.context?.error;
+      const message =
+        contextError?.error ||
+        contextError?.message ||
+        error?.message ||
+        JSON.stringify(error, Object.getOwnPropertyNames(error)) ||
+        "No se pudo guardar el recurso.";
+
+      console.error("[Campus UCI] Error guardando recurso:", {
+        message: error?.message,
+        contextError,
+        serializedError: JSON.stringify(error, Object.getOwnPropertyNames(error)),
+        rawError: error,
+      });
+      setMessage(`No se pudo guardar el recurso: ${message}`);
     } finally {
       setSaving(false);
     }
   }
 
   async function handleToggle(resource) {
+    if (!canManageResources) return;
     setMessage("");
 
     try {
@@ -194,6 +224,42 @@ export default function RecursosAdmin({
     } catch (error) {
       console.error("[Campus UCI] Error cambiando estado:", error);
       setMessage(error.message || "No se pudo cambiar el estado del recurso.");
+    }
+  }
+
+  async function handleDelete(resource) {
+    if (!canManageResources) return;
+
+    const resourceName = resource.nombre || resource.correo || "este recurso";
+    const confirmed = window.confirm(
+      `Esta acción no se puede deshacer.\n\nSe eliminará el profile y sus asignaciones en usuario_especialidad para: ${resourceName}.\n\nSi el recurso tiene entregas, asistencia, notas u otros datos académicos relacionados, Supabase puede bloquear la eliminación y deberás desactivarlo.\n\n¿Continuar?`,
+    );
+    if (!confirmed) return;
+
+    const strongConfirm = window.prompt(
+      `Confirmación fuerte requerida.\n\nEscribí ELIMINAR para borrar definitivamente a ${resourceName}.`,
+    );
+    if (strongConfirm !== "ELIMINAR") {
+      setMessage("Eliminación cancelada. No se hicieron cambios.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+
+    try {
+      const result = await deleteRecursoDefinitivo(resource);
+      await loadRecursos();
+      setMessage(
+        result.authUserDeleted
+          ? "Recurso eliminado definitivamente."
+          : "Recurso eliminado de profiles y usuario_especialidad. El usuario de auth.users no se puede borrar desde este frontend.",
+      );
+    } catch (error) {
+      console.error("[Campus UCI] Error eliminando recurso:", error);
+      setMessage(error.message || "No se pudo eliminar el recurso. Recomendación: desactivarlo para conservar historial.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -212,10 +278,12 @@ export default function RecursosAdmin({
             <ArrowLeft size={16} strokeWidth={2.1} aria-hidden="true" />
             Volver
           </button>
-          <button type="button" className="academic-submit" onClick={openCreate}>
-            <Plus size={16} strokeWidth={2.1} aria-hidden="true" />
-            Nuevo recurso
-          </button>
+          {canManageResources ? (
+            <button type="button" className="academic-submit" onClick={openCreate}>
+              <Plus size={16} strokeWidth={2.1} aria-hidden="true" />
+              Nuevo recurso
+            </button>
+          ) : null}
         </div>
       </section>
 
@@ -288,22 +356,37 @@ export default function RecursosAdmin({
                     </td>
                     <td>
                       <div className="academic-row-actions">
-                        <button type="button" onClick={() => openEdit(resource)}>
-                          <Pencil size={14} strokeWidth={2} aria-hidden="true" />
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          className={resource.activo === false ? "" : "danger"}
-                          onClick={() => handleToggle(resource)}
-                        >
-                          {resource.activo === false ? (
-                            <UserCheck size={14} strokeWidth={2} aria-hidden="true" />
-                          ) : (
-                            <UserX size={14} strokeWidth={2} aria-hidden="true" />
-                          )}
-                          {resource.activo === false ? "Activar" : "Desactivar"}
-                        </button>
+                        {canManageResources ? (
+                          <>
+                            <button type="button" onClick={() => openEdit(resource)}>
+                              <Pencil size={14} strokeWidth={2} aria-hidden="true" />
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              className={resource.activo === false ? "" : "danger"}
+                              onClick={() => handleToggle(resource)}
+                              disabled={saving}
+                            >
+                              {resource.activo === false ? (
+                                <UserCheck size={14} strokeWidth={2} aria-hidden="true" />
+                              ) : (
+                                <UserX size={14} strokeWidth={2} aria-hidden="true" />
+                              )}
+                              {resource.activo === false ? "Activar" : "Desactivar"}
+                            </button>
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() => handleDelete(resource)}
+                              disabled={saving}
+                              title="Eliminar profile y asignaciones. No elimina auth.users desde frontend."
+                            >
+                              <Trash2 size={14} strokeWidth={2} aria-hidden="true" />
+                              Eliminar definitivo
+                            </button>
+                          </>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -317,13 +400,19 @@ export default function RecursosAdmin({
       {showModal ? (
         <div className="resources-modal-backdrop" role="presentation">
           <section className="resources-modal" role="dialog" aria-modal="true" aria-label={editingId ? "Editar recurso" : "Crear recurso"}>
-            <div className="resources-modal-head">
+              <div className="resources-modal-head">
               <div>
                 <span>{editingId ? "Edición" : "Nuevo usuario"}</span>
                 <h3>{editingId ? "Editar recurso" : "Crear recurso académico"}</h3>
               </div>
               <button type="button" onClick={closeModal}>Cerrar</button>
-            </div>
+              </div>
+              {canManageResources ? null : (
+                <div className="cu-alert">
+                  <AlertTriangle size={16} strokeWidth={2} aria-hidden="true" />
+                  Solo admin/jefe puede crear, editar, desactivar o eliminar recursos.
+                </div>
+              )}
 
             <form className="academic-form" onSubmit={handleSubmit}>
               {hasDraft ? (
@@ -354,6 +443,16 @@ export default function RecursosAdmin({
                   <input type="email" value={form.correo} onChange={(event) => setField("correo", event.target.value)} required />
                 </label>
               </div>
+
+              <label>
+                Rol académico
+                <select value={form.rol} onChange={(event) => setField("rol", event.target.value)}>
+                  <option value="recurso">Recurso / estudiante</option>
+                  <option value="docente">Docente</option>
+                  <option value="jefe">Jefe</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </label>
 
               {!editingId ? (
                 <label>
@@ -416,7 +515,7 @@ export default function RecursosAdmin({
               </label>
 
               <div className="academic-form-actions">
-                <button type="submit" className="academic-submit" disabled={saving}>
+                <button type="submit" className="academic-submit" disabled={saving || !canManageResources}>
                   {saving ? "Guardando..." : editingId ? "Guardar cambios" : "Crear usuario recurso"}
                 </button>
                 <button type="button" className="academic-secondary-action" onClick={closeModal} disabled={saving}>

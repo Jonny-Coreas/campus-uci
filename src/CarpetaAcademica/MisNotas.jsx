@@ -49,6 +49,7 @@ export default function MisNotas({
   recurso = null,
   profile = null,
   embedded = true,
+  readOnly = false,
 }) {
   const especialidadId = especialidad?.id || null;
   const recursoId = recurso?.profile_id || recurso?.id || null;
@@ -99,6 +100,7 @@ export default function MisNotas({
   }
 
   function startEdit(row) {
+    if (readOnly) return;
     setEditingId(row.id);
     setForm({
       area: row.area || "Área 1",
@@ -111,6 +113,7 @@ export default function MisNotas({
 
   async function guardarNota(e) {
     e.preventDefault();
+    if (readOnly) return;
 
     const nota = numberValue(form.nota);
     const porcentaje = porcentajeFromNota(nota);
@@ -183,6 +186,7 @@ export default function MisNotas({
   }
 
   async function borrarNota(row) {
+    if (readOnly) return;
     const ok = window.confirm("¿Seguro que querés borrar esta nota?");
     if (!ok) return;
 
@@ -261,16 +265,18 @@ export default function MisNotas({
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <span style={badgeStyle}>HISTORIAL ACADÉMICO</span>
-            <button
-              type="button"
-              onClick={() => {
-                resetForm();
-                setShowForm((prev) => !prev);
-              }}
-              style={btnPrimary}
-            >
-              {showForm ? "Cerrar" : "+ Agregar nota"}
-            </button>
+            {!readOnly ? (
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setShowForm((prev) => !prev);
+                }}
+                style={btnPrimary}
+              >
+                {showForm ? "Cerrar" : "+ Agregar nota"}
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -302,7 +308,7 @@ export default function MisNotas({
           <strong style={{ color: statusColor }}>{stats.estado}</strong>
         </div>
 
-        {showForm ? (
+        {showForm && !readOnly ? (
           <form onSubmit={guardarNota} style={formCardStyle}>
             <h3 style={formTitleStyle}>{editingId ? "Editar nota" : "Nueva nota"}</h3>
 
@@ -407,14 +413,14 @@ export default function MisNotas({
                   <th style={thStyle}>Porcentaje</th>
                   <th style={thStyle}>Estado</th>
                   <th style={thStyle}>Observaciones</th>
-                  <th style={thStyle}>Acción</th>
+                  {!readOnly ? <th style={thStyle}>Acción</th> : null}
                 </tr>
               </thead>
 
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={tdStyle}>No hay notas registradas todavía.</td>
+                    <td colSpan={readOnly ? 6 : 7} style={tdStyle}>No hay notas registradas todavía.</td>
                   </tr>
                 ) : (
                   rows.map((row) => (
@@ -427,14 +433,16 @@ export default function MisNotas({
                         {row.estado || estadoFromNota(row.nota)}
                       </td>
                       <td style={tdStyle}>{row.observaciones || "—"}</td>
-                      <td style={tdActionStyle}>
-                        <button type="button" onClick={() => startEdit(row)} style={btnTinyBlue}>
-                          Editar
-                        </button>
-                        <button type="button" onClick={() => borrarNota(row)} style={btnTinyRed}>
-                          Borrar
-                        </button>
-                      </td>
+                      {!readOnly ? (
+                        <td style={tdActionStyle}>
+                          <button type="button" onClick={() => startEdit(row)} style={btnTinyBlue}>
+                            Editar
+                          </button>
+                          <button type="button" onClick={() => borrarNota(row)} style={btnTinyRed}>
+                            Borrar
+                          </button>
+                        </td>
+                      ) : null}
                     </tr>
                   ))
                 )}

@@ -1,31 +1,26 @@
-import { createClient } from "@supabase/supabase-js";
 import { supabase } from "../supabaseClient";
-
-const supabaseUrl =
-  import.meta.env.VITE_SUPABASE_URL || "https://tiakdzfaeqsutyfutkrb.supabase.co";
-const supabaseAnonKey =
-  import.meta.env.VITE_SUPABASE_ANON_KEY || "sb_publishable_r1D15BZrKDf6celB66CXKw_0oliHU2s";
 
 const PROFILE_SELECT = "id, user_id, nombre, correo, rol, servicio, area, cum, activo, avatar_url";
 const ASSIGNMENT_SELECT = "id, profile_id, user_id, especialidad_id, progreso, activo, estado, created_at";
-
-function authClient() {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  });
-}
 
 function normalizeRole(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function coerceAcademicRole(value) {
+  const role = normalizeRole(value);
+  if (role === "docente") return "docente";
+  if (role === "admin") return "admin";
+  if (role === "jefe") return "jefe";
+  if (["recurso", "estudiante", "personal", "recurso / estudiante", "recurso/estudiante"].includes(role)) {
+    return "recurso";
+  }
+  return "recurso";
+}
+
 function isAcademicResource(profile) {
-  const role = normalizeRole(profile?.rol || "personal");
-  return !["admin", "jefe", "docente", "supervisor"].includes(role);
+  const role = normalizeRole(profile?.rol || "recurso");
+  return !["admin", "jefe", "supervisor"].includes(role);
 }
 
 function sanitizeFileName(name = "avatar") {
@@ -147,9 +142,41 @@ export async function assignEspecialidad({ profileId, userId, especialidadId, pr
   return data?.id || null;
 }
 
+export async function createUserWithEdgeFunction(payload) {
+  const { data, error } = await supabase.functions.invoke("admin-create-user", {
+    body: payload,
+  });
+
+  if (error) {
+    console.error("[Campus UCI] admin-create-user Edge Function error completo:", error);
+    console.error("[Campus UCI] error context:", error.context);
+
+    let realMessage = error.message || "Error desconocido al crear usuario";
+
+    try {
+      if (error.context && typeof error.context.json === "function") {
+        const json = await error.context.json();
+        realMessage = json?.error || JSON.stringify(json);
+      }
+    } catch (e) {
+      console.error("[Campus UCI] No se pudo leer el body del error:", e);
+    }
+
+    throw new Error(realMessage);
+  }
+
+  if (data?.error) {
+    console.error("[Campus UCI] admin-create-user respondió error:", data);
+    throw new Error(data.error);
+  }
+
+  return data;
+}
+
 export async function createRecurso(form) {
   const email = form.correo?.trim().toLowerCase();
   const password = form.password?.trim();
+  const role = coerceAcademicRole(form.rol);
 
   if (!form.nombre?.trim()) throw new Error("El nombre es obligatorio.");
   if (!email) throw new Error("El correo es obligatorio.");
@@ -157,50 +184,36 @@ export async function createRecurso(form) {
     throw new Error("La contraseña temporal debe tener al menos 6 caracteres.");
   }
 
-  const { data: authData, error: authError } = await authClient().auth.signUp({
+  const result = await createUserWithEdgeFunction({
     email,
     password,
-    options: {
-      data: {
-        full_name: form.nombre.trim(),
-        role: "personal",
-      },
-    },
+    nombre: form.nombre.trim(),
+    rol: role,
+    cum: form.cum?.trim().toUpperCase() || null,
+    servicio: form.servicio?.trim() || "UCI",
+    area: form.area?.trim() || null,
+    especialidad_id: form.especialidadId || null,
+    progreso: Number(form.progreso || 0) || 0,
   });
 
-  if (authError) throw authError;
-  const authUser = authData?.user;
-  if (!authUser?.id) {
-    throw new Error("Supabase Auth no devolvió el usuario creado.");
-  }
+  const profile = result?.profile;
+  const userId = result?.user?.id || profile?.user_id;
+  if (!profile?.id || !userId) throw new Error("La Edge Function no devolvió profile/user válido.");
 
-  const avatarUrl = await uploadAvatarForUser({ userId: authUser.id, file: form.avatarFile });
+  if (form.avatarFile) {
+    const avatarUrl = await uploadAvatarForUser({ userId, file: form.avatarFile });
+    const { data: updatedProfile, error: avatarError } = await supabase
+      .from("profiles")
+      .update({ avatar_url: avatarUrl })
+      .eq("id", profile.id)
+      .select(PROFILE_SELECT)
+      .single();
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .insert({
-      user_id: authUser.id,
-      nombre: form.nombre.trim(),
-      correo: email,
-      rol: "personal",
-      servicio: form.servicio?.trim() || "UCI",
-      area: form.area?.trim() || null,
-      cum: form.cum?.trim().toUpperCase() || null,
-      activo: form.activo !== false,
-      avatar_url: avatarUrl,
-    })
-    .select(PROFILE_SELECT)
-    .single();
-
-  if (profileError) throw profileError;
-
-  if (form.especialidadId) {
-    await assignEspecialidad({
-      profileId: profile.id,
-      userId: profile.user_id,
-      especialidadId: form.especialidadId,
-      progreso: form.progreso || 0,
-    });
+    if (avatarError) {
+      console.warn("[Campus UCI] Usuario creado, pero no se pudo guardar avatar_url:", avatarError);
+      return profile;
+    }
+    return updatedProfile;
   }
 
   return profile;
@@ -212,6 +225,7 @@ export async function updateRecurso(id, form) {
   const payload = {
     nombre: form.nombre?.trim(),
     correo: form.correo?.trim().toLowerCase(),
+    rol: coerceAcademicRole(form.rol),
     servicio: form.servicio?.trim() || null,
     area: form.area?.trim() || null,
     cum: form.cum?.trim().toUpperCase() || null,
@@ -254,5 +268,55 @@ export async function toggleActivo(id, activo) {
     .single();
 
   if (error) throw error;
+
+  const assignmentIds = [data.id, data.user_id].filter(Boolean);
+  if (assignmentIds.length) {
+    const { error: assignmentError } = await supabase
+      .from("usuario_especialidad")
+      .update({ activo: Boolean(activo) })
+      .or(`profile_id.eq.${data.id},user_id.in.(${assignmentIds.join(",")})`);
+
+    if (assignmentError) {
+      console.warn("[Campus UCI] No se pudo sincronizar activo en usuario_especialidad:", assignmentError);
+    }
+  }
+
   return data;
+}
+
+export async function deleteRecursoDefinitivo(resource) {
+  const profileId = resource?.id;
+  if (!profileId) throw new Error("Falta id del recurso para eliminar.");
+
+  const userIds = [...new Set([resource?.user_id, profileId].filter(Boolean))];
+
+  const assignmentFilters = [`profile_id.eq.${profileId}`];
+  if (userIds.length) assignmentFilters.push(`user_id.in.(${userIds.join(",")})`);
+
+  const { error: assignmentError } = await supabase
+    .from("usuario_especialidad")
+    .delete()
+    .or(assignmentFilters.join(","));
+
+  if (assignmentError) throw assignmentError;
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .delete()
+    .eq("id", profileId);
+
+  if (profileError) {
+    const message = String(profileError.message || "");
+    if (message.toLowerCase().includes("foreign key")) {
+      throw new Error(
+        "No se pudo eliminar el perfil porque tiene datos académicos relacionados. Desactivá el recurso para conservar historial.",
+      );
+    }
+    throw profileError;
+  }
+
+  return {
+    deletedProfileId: profileId,
+    authUserDeleted: false,
+  };
 }

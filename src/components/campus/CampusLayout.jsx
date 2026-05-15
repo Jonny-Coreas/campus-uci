@@ -13,6 +13,7 @@ import {
   Settings,
   Star,
   Sun,
+  UsersRound,
 } from "lucide-react";
 import AvatarUpload from "./AvatarUpload";
 import "./campus-layout.css";
@@ -32,10 +33,13 @@ const DEFAULT_MENU = [
 
 const MENU_ICONS = {
   Inicio: Home,
+  "Panel Docente": GraduationCap,
   Especializaciones: GraduationCap,
   Calendario: CalendarDays,
   Asistencia: ClipboardCheck,
   Evaluaciones: Star,
+  Materiales: BookOpen,
+  Recursos: UsersRound,
   Reportes: BarChart3,
   Expediente: FileText,
   Mensajes: MessageSquare,

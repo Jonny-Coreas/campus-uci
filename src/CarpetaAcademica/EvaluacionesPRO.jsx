@@ -146,6 +146,8 @@ export default function EvaluacionesPRO({
   setEvaluacionActiva = null,
   embedded = true,
   onBack = null,
+  readOnly = false,
+  canManageAcademic = false,
 }) {
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
@@ -191,6 +193,7 @@ export default function EvaluacionesPRO({
 
   const rol = String(effectiveProfile?.rol || "").toLowerCase();
   const isJefe = rol === "jefe" || rol === "admin";
+  const canManage = !readOnly && (canManageAcademic || isJefe || rol === "docente");
   const areaIdPerfil = areaActivaProp || effectiveProfile?.area_id || "";
   const unitOptions = useMemo(
     () =>
@@ -647,6 +650,7 @@ export default function EvaluacionesPRO({
 
   async function addRow(e) {
     e.preventDefault();
+    if (!canManage) return;
 
     if (loadingProfile) return alert("Cargando perfil...");
 
@@ -794,6 +798,7 @@ export default function EvaluacionesPRO({
   }
 
   async function deleteRow(rowId) {
+    if (!canManage) return;
     const r = rows.find((x) => x.id === rowId);
     const temaTxt = r?.tema ? ` (${r.tema})` : "";
     const c1 = window.confirm(`¿Seguro que quieres borrar este registro${temaTxt}?`);
@@ -826,7 +831,7 @@ export default function EvaluacionesPRO({
   }
 
   async function clearAll() {
-    if (!isJefe) {
+    if (!canManage || !isJefe) {
       alert("Solo el jefe puede limpiar todos los registros.");
       return;
     }
@@ -872,6 +877,7 @@ export default function EvaluacionesPRO({
   const temasWrapRef = useRef(null);
 
   async function exportPDF() {
+    if (!canManage) return;
     try {
       if (!dashboardRef.current) return;
       setLoading(true);
@@ -909,6 +915,7 @@ export default function EvaluacionesPRO({
   }
 
   async function exportExcel() {
+    if (!canManage) return;
     try {
       setLoading(true);
 
@@ -1186,16 +1193,20 @@ export default function EvaluacionesPRO({
                   ⬅ Volver
                 </button>
               ) : null}
-              <button onClick={loadData} disabled={loading || loadingProfile} style={btnBlueOutline}>
-                Recargar
-              </button>
-              <button onClick={exportPDF} disabled={loading} style={btnBlueOutline}>
-                Exportar PDF
-              </button>
-              <button onClick={exportExcel} disabled={loading} style={btnBlueOutline}>
-                Exportar Excel
-              </button>
-              {isJefe && (
+              {canManage ? (
+                <>
+                  <button onClick={loadData} disabled={loading || loadingProfile} style={btnBlueOutline}>
+                    Recargar
+                  </button>
+                  <button onClick={exportPDF} disabled={loading} style={btnBlueOutline}>
+                    Exportar PDF
+                  </button>
+                  <button onClick={exportExcel} disabled={loading} style={btnBlueOutline}>
+                    Exportar Excel
+                  </button>
+                </>
+              ) : null}
+              {canManage && isJefe && (
                 <button onClick={clearAll} disabled={loading} style={btnDanger}>
                   Limpiar todo
                 </button>
@@ -1212,6 +1223,7 @@ export default function EvaluacionesPRO({
               alignItems: "stretch",
             }}
           >
+            {canManage ? (
             <Card title="Registro único (Guarda todo)">
               <form onSubmit={addRow} style={{ display: "grid", gap: 12 }}>
                 <div style={formGrid2}>
@@ -1492,6 +1504,7 @@ export default function EvaluacionesPRO({
                 </div>
               </form>
             </Card>
+            ) : null}
 
             <Card
               title="Evaluaciones (clic para ver resultados anteriores)"
@@ -1613,9 +1626,11 @@ export default function EvaluacionesPRO({
                               <button type="button" onClick={() => setSelectedId(r.id)} disabled={loading} style={btnBlueOutline}>
                                 Ver
                               </button>
-                              <button type="button" onClick={() => deleteRow(r.id)} disabled={loading} style={btnDelete}>
-                                🗑️ Borrar
-                              </button>
+                              {canManage ? (
+                                <button type="button" onClick={() => deleteRow(r.id)} disabled={loading} style={btnDelete}>
+                                  🗑️ Borrar
+                                </button>
+                              ) : null}
                             </div>
                           </td>
                         </tr>

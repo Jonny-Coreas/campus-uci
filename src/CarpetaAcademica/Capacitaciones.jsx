@@ -14,6 +14,7 @@ export default function Capacitaciones({
   especialidad = null,
   recurso = null,
   embedded = true,
+  readOnly = false,
 }) {
   const especialidadId = especialidad?.id || null;
   const especialidadNombre = especialidad?.nombre || "ECMO";
@@ -67,6 +68,7 @@ export default function Capacitaciones({
   }
 
   function startEdit(row) {
+    if (readOnly) return;
     setEditingId(row.id);
     setForm({
       semana: row.semana || "",
@@ -81,6 +83,7 @@ export default function Capacitaciones({
 
   async function guardar(e) {
     e.preventDefault();
+    if (readOnly) return;
 
     if (!form.semana.trim()) return alert("Falta la semana.");
     if (!form.fecha) return alert("Falta la fecha.");
@@ -175,6 +178,7 @@ export default function Capacitaciones({
   }
 
   async function borrar(row) {
+    if (readOnly) return;
     const ok = window.confirm("¿Seguro que querés borrar esta fila del cronograma?");
     if (!ok) return;
 
@@ -212,27 +216,31 @@ export default function Capacitaciones({
             <div style={labelStyle}>CARPETA ACTIVA</div>
             <h2 style={titleStyle}>🗓️ Cronograma</h2>
             <p style={subtitleStyle}>
-              Planificación editable de clases académicas nivel PRO en {especialidadNombre}.
+              {readOnly
+                ? `Cronograma de clases publicado para ${especialidadNombre}.`
+                : `Planificación editable de clases académicas nivel PRO en ${especialidadNombre}.`}
               {recurso?.nombre ? ` Expediente de ${recurso.nombre}.` : ""}
             </p>
           </div>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <span style={badgeStyle}>NIVEL PRO</span>
-            <button
-              type="button"
-              onClick={() => {
-                resetForm();
-                setShowForm((prev) => !prev);
-              }}
-              style={btnPrimary}
-            >
-              {showForm ? "Cerrar" : "+ Agregar tema"}
-            </button>
+            {!readOnly ? (
+              <button
+                type="button"
+                onClick={() => {
+                  resetForm();
+                  setShowForm((prev) => !prev);
+                }}
+                style={btnPrimary}
+              >
+                {showForm ? "Cerrar" : "+ Agregar tema"}
+              </button>
+            ) : null}
           </div>
         </div>
 
-        {showForm ? (
+        {showForm && !readOnly ? (
           <form onSubmit={guardar} style={formCardStyle}>
             <h3 style={formTitleStyle}>{editingId ? "Editar tema" : "Nuevo tema del cronograma"}</h3>
 
@@ -337,14 +345,14 @@ export default function Capacitaciones({
                   <th style={thStyle}>Contenido destacado</th>
                   <th style={thStyle}>Actividad</th>
                   <th style={thStyle}>Evaluación</th>
-                  <th style={thStyle}>Acción</th>
+                  {!readOnly ? <th style={thStyle}>Acción</th> : null}
                 </tr>
               </thead>
 
               <tbody>
                 {sortedRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={tdStyle}>
+                    <td colSpan={readOnly ? 6 : 7} style={tdStyle}>
                       No hay temas registrados todavía.
                     </td>
                   </tr>
@@ -357,14 +365,16 @@ export default function Capacitaciones({
                       <td style={tdStyle}>{item.contenido}</td>
                       <td style={tdStyle}>{item.actividad || "—"}</td>
                       <td style={tdEvalStyle}>{item.evaluacion || "—"}</td>
-                      <td style={tdActionStyle}>
-                        <button type="button" onClick={() => startEdit(item)} style={btnTinyBlue}>
-                          Editar
-                        </button>
-                        <button type="button" onClick={() => borrar(item)} style={btnTinyRed}>
-                          Borrar
-                        </button>
-                      </td>
+                      {!readOnly ? (
+                        <td style={tdActionStyle}>
+                          <button type="button" onClick={() => startEdit(item)} style={btnTinyBlue}>
+                            Editar
+                          </button>
+                          <button type="button" onClick={() => borrar(item)} style={btnTinyRed}>
+                            Borrar
+                          </button>
+                        </td>
+                      ) : null}
                     </tr>
                   ))
                 )}
@@ -643,4 +653,3 @@ const btnTinyRed = {
   cursor: "pointer",
   fontWeight: 900,
 };
-

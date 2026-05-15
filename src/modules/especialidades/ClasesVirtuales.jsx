@@ -66,6 +66,7 @@ export default function ClasesVirtuales({ especialidad = null, profile = null, o
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [showForm, setShowForm] = useState(true);
 
   const especialidadId = especialidad?.id || null;
@@ -133,17 +134,20 @@ export default function ClasesVirtuales({ especialidad = null, profile = null, o
     setEditingId(row.id);
     setShowForm(true);
     setError("");
+    setMessage("");
   }
 
   function cancelEdit() {
     resetForm();
     setShowForm(false);
     setError("");
+    setMessage("");
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
+    setMessage("");
 
     if (!form.titulo.trim()) {
       setError("El título de la clase es obligatorio.");
@@ -158,7 +162,8 @@ export default function ClasesVirtuales({ especialidad = null, profile = null, o
     setSaving(true);
 
     try {
-      if (editingId) {
+      const wasEditing = Boolean(editingId);
+      if (wasEditing) {
         await updateClaseVirtual(editingId, form);
       } else {
         await createClaseVirtual(especialidadId, form);
@@ -167,6 +172,7 @@ export default function ClasesVirtuales({ especialidad = null, profile = null, o
       resetForm();
       setShowForm(false);
       await loadClases();
+      setMessage(wasEditing ? "Clase actualizada correctamente." : "Clase creada correctamente.");
     } catch (saveError) {
       console.error("[Campus UCI] Error guardando clase virtual:", saveError);
       setError(saveError.message || "No se pudo guardar la clase virtual.");
@@ -181,11 +187,13 @@ export default function ClasesVirtuales({ especialidad = null, profile = null, o
 
     setDeletingId(row.id);
     setError("");
+    setMessage("");
 
     try {
       await deleteClaseVirtual(row.id);
       if (editingId === row.id) resetForm();
       await loadClases();
+      setMessage("Clase eliminada correctamente.");
     } catch (deleteError) {
       console.error("[Campus UCI] Error eliminando clase virtual:", deleteError);
       setError(deleteError.message || "No se pudo eliminar la clase virtual.");
@@ -212,6 +220,7 @@ export default function ClasesVirtuales({ especialidad = null, profile = null, o
       </section>
 
       {error ? <div className="cu-alert">⚠️ {error}</div> : null}
+      {message ? <div className="cu-success">{message}</div> : null}
 
       <section className="academic-summary-grid">
         <article className="academic-summary-card">
