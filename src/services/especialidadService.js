@@ -1,5 +1,6 @@
 import { supabase } from "../supabaseClient";
 import { getProfilesByIds, getProfilesByUserIds } from "./profileService";
+import { normalizeSpecialtyRecords } from "../utils/especialidadesCatalog";
 
 const ASIGNACIONES_TABLE = "usuario_especialidad";
 const ASSIGNMENT_SELECTS = [
@@ -54,7 +55,7 @@ export async function getEspecialidades() {
     .order("created_at", { ascending: true });
 
   if (error) throw error;
-  return data || [];
+  return normalizeSpecialtyRecords(data || []);
 }
 
 export async function getActiveAssignmentsByEspecialidad(especialidadId) {

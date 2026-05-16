@@ -129,6 +129,13 @@ export default function DocenteDashboard({
 
   const stats = data?.stats || {};
   const firstName = displayName.split(" ")[0] || displayName;
+  const specialtyScope = data?.especialidadesPermitidas || [];
+  const specialtyScopeName = specialtyScope.length > 1
+    ? `${specialtyScope.length} especialidades asignadas`
+    : specialtyScope[0]?.nombre || "Sin especialidad asignada";
+  const specialtyScopeDetail = specialtyScope.length
+    ? specialtyScope.map((item) => item.nombre).join(" · ")
+    : "Solicitá asignación académica para ver métricas del panel.";
   const accessCards = [
     { title: "Asistencia", description: "Registrar asistencia por clase y recurso.", icon: CalendarDays, action: onOpenAsistencia },
     { title: "Evaluaciones", description: "Crear evaluaciones y registrar notas.", icon: Star, action: onOpenEvaluaciones },
@@ -189,7 +196,7 @@ export default function DocenteDashboard({
               <p className="hero-subtitle">Panel académico docente para asistencia, evaluaciones, entregas y seguimiento de formación UCI.</p>
               <div className="hero-specialty-row hero-meta">
                 <span className="hero-badge hero-specialty-label">Rol docente</span>
-                <strong className="hero-specialty-name">{profile?.servicio || "Campus Académico UCI"}</strong>
+                <strong className="hero-specialty-name" title={specialtyScopeDetail}>{specialtyScopeName}</strong>
               </div>
               <div className="hero-progress-line" aria-label="Actividad docente">
                 <span style={{ width: `${Math.min(100, (stats.evaluaciones || 0) * 10)}%` }} />
@@ -209,6 +216,9 @@ export default function DocenteDashboard({
         </motion.header>
 
         {error ? <div className="cu-alert">⚠️ {error}</div> : null}
+        {!loading && !specialtyScope.length ? (
+          <div className="cu-alert">No tenés especialidades asignadas. El panel docente no mostrará clases, tareas, entregas ni notas hasta que administración te asigne una especialidad.</div>
+        ) : null}
         {loading ? <div className="cu-empty">Cargando panel docente...</div> : null}
 
         <section className="stats-grid">

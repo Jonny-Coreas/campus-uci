@@ -842,7 +842,8 @@ function RegistrarPersonal({ session, profile, especialidades = [], onBack, onLo
     if (rol === "docente") return "DOC";
     if (rol === "supervisor") return "SUP";
     if (nombreEspecialidad.includes("ecmo")) return "ECMO";
-    if (nombreEspecialidad.includes("hemo")) return "HEMO";
+    if (nombreEspecialidad.includes("terapia") || nombreEspecialidad.includes("lenta") || nombreEspecialidad.includes("hemo")) return "TL";
+    if (nombreEspecialidad.includes("cec")) return "CEC";
 
     return "UCI";
   }
@@ -2515,6 +2516,8 @@ export default function App() {
       >
         <CronogramaAcademico
           especialidadId={especialidadActiva?.id || null}
+          session={session}
+          profile={profile}
           onBack={() => setVista("dashboard")}
         />
       </EspecialidadAdminModuleLayout>
@@ -2532,6 +2535,7 @@ export default function App() {
         activeItem={getActiveCampusItem()}
       >
         <MiAsistencia
+          session={session}
           profile={profile}
           especialidad={especialidadActiva}
           onBack={() => setVista("dashboard")}

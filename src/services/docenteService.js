@@ -2,6 +2,7 @@ import { supabase } from "../supabaseClient";
 import { getExpedientesByEspecialidad } from "./especialidadService";
 import { reviewEntregaTarea } from "./clasesTareasService";
 import { isAdminOrJefe, isDocente, normalizeRole } from "../auth/roles";
+import { normalizeSpecialtyRecords } from "../utils/especialidadesCatalog";
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
@@ -23,7 +24,7 @@ async function getEspecialidades() {
     .order("nombre", { ascending: true });
 
   if (error) throw error;
-  return data || [];
+  return normalizeSpecialtyRecords(data || []);
 }
 
 export async function getEspecialidadesPermitidas(profile = null, especialidades = []) {
@@ -78,7 +79,18 @@ function onlyRecursos(rows = []) {
   return rows.filter((item) => normalizeRole(item?.rol) === "recurso");
 }
 
-export async function getMisClases(profile = null) {
+function idsFromEspecialidades(especialidades = []) {
+  return especialidades.map((item) => item.id).filter(Boolean);
+}
+
+function applyEspecialidadScope(query, especialidadIds = []) {
+  if (!especialidadIds.length) return query;
+  return query.in("especialidad_id", especialidadIds);
+}
+
+export async function getMisClases(profile = null, especialidadIds = null) {
+  if (Array.isArray(especialidadIds) && especialidadIds.length === 0) return [];
+
   const docenteName = profile?.nombre || "";
   let query = supabase
     .from("especialidad_clases_virtuales")
@@ -86,6 +98,10 @@ export async function getMisClases(profile = null) {
     .gte("fecha", todayDate())
     .order("fecha", { ascending: true })
     .order("hora_inicio", { ascending: true });
+
+  if (Array.isArray(especialidadIds)) {
+    query = applyEspecialidadScope(query, especialidadIds);
+  }
 
   if (docenteName) {
     query = query.ilike("docente", `%${docenteName}%`);
@@ -95,12 +111,18 @@ export async function getMisClases(profile = null) {
 
   if (error) {
     console.warn("[Campus UCI] No se pudieron cargar clases por docente; usando vista general:", error);
-    const fallback = await supabase
+    let fallbackQuery = supabase
       .from("especialidad_clases_virtuales")
       .select("*")
       .gte("fecha", todayDate())
       .order("fecha", { ascending: true })
       .order("hora_inicio", { ascending: true });
+
+    if (Array.isArray(especialidadIds)) {
+      fallbackQuery = applyEspecialidadScope(fallbackQuery, especialidadIds);
+    }
+
+    const fallback = await fallbackQuery;
     if (fallback.error) throw fallback.error;
     return fallback.data || [];
   }
@@ -108,17 +130,27 @@ export async function getMisClases(profile = null) {
   return data || [];
 }
 
-export async function getMisTareas() {
-  const { data, error } = await supabase
+export async function getMisTareas(especialidadIds = null) {
+  if (Array.isArray(especialidadIds) && especialidadIds.length === 0) return [];
+
+  let query = supabase
     .from("especialidad_tareas")
     .select("*")
     .order("fecha_limite", { ascending: true });
 
+  if (Array.isArray(especialidadIds)) {
+    query = applyEspecialidadScope(query, especialidadIds);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data || [];
 }
 
-export async function getEntregasPendientes() {
+export async function getEntregasPendientes(tareas = []) {
+  const tareaIds = tareas.map((item) => item.id).filter(Boolean);
+  if (!tareaIds.length) return [];
+
   const { data, error } = await supabase
     .from("especialidad_tarea_entregas")
     .select(`
@@ -131,6 +163,7 @@ export async function getEntregasPendientes() {
         avatar_url
       )
     `)
+    .in("tarea_id", tareaIds)
     .eq("estado", "entregada")
     .order("fecha_entrega", { ascending: true });
 
@@ -138,13 +171,20 @@ export async function getEntregasPendientes() {
   return data || [];
 }
 
-export async function getNotasRecientes() {
-  const { data, error } = await supabase
+export async function getNotasRecientes(especialidadIds = null) {
+  if (Array.isArray(especialidadIds) && especialidadIds.length === 0) return [];
+
+  let query = supabase
     .from("especialidad_notas")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(8);
 
+  if (Array.isArray(especialidadIds)) {
+    query = applyEspecialidadScope(query, especialidadIds);
+  }
+
+  const { data, error } = await query;
   if (error) {
     console.warn("[Campus UCI] No se pudieron cargar notas recientes:", error);
     return [];
@@ -154,16 +194,20 @@ export async function getNotasRecientes() {
 }
 
 export async function getDocenteDashboard(profile = null) {
-  const [especialidades, clases, tareas, entregasPendientes, notasRecientes] = await Promise.all([
-    getEspecialidades(),
-    getMisClases(profile),
-    getMisTareas(),
-    getEntregasPendientes(),
-    getNotasRecientes(),
+  const especialidades = await getEspecialidades();
+  const especialidadesPermitidas = await getEspecialidadesPermitidas(profile, especialidades);
+  const especialidadIds = isAdminOrJefe(profile) ? null : idsFromEspecialidades(especialidadesPermitidas);
+
+  const [clases, tareas, notasRecientes] = await Promise.all([
+    getMisClases(profile, especialidadIds),
+    getMisTareas(especialidadIds),
+    getNotasRecientes(especialidadIds),
   ]);
+  const entregasPendientes = await getEntregasPendientes(tareas);
 
   return {
     especialidades,
+    especialidadesPermitidas,
     clases,
     tareas,
     entregasPendientes,

@@ -39,7 +39,7 @@ const FALLBACK_UNIDADES = [
   "UCI QUIRURGICA",
   "INTERMEDIOS",
   "ECMO",
-  "HEMODIÁLISIS",
+  "TERAPIAS LENTAS",
   "OTRO",
 ];
 
@@ -247,7 +247,7 @@ export default function EvaluacionesPRO({
   }, []);
 
   // Campus UCI: la unidad queda libre para todos los roles.
-  // No forzamos la unidad por servicio_id porque puede registrar UCI General, Trauma, Quirúrgica, Intermedios, ECMO o Hemodiálisis.
+  // No forzamos la unidad por servicio_id porque puede registrar UCI General, Trauma, Quirúrgica, Intermedios, ECMO o Terapias Lentas.
   useEffect(() => {
     return undefined;
   }, []);
@@ -1246,7 +1246,7 @@ export default function EvaluacionesPRO({
                       ))}
                     </select>
                     <div style={{ color: "#6b7280", fontSize: 11, marginTop: 4 }}>
-                      Unidad libre para Campus UCI: podés seleccionar UCI General, Trauma, Quirúrgica, Intermedios, ECMO o Hemodiálisis.
+                      Unidad libre para Campus UCI: podés seleccionar UCI General, Trauma, Quirúrgica, Intermedios, ECMO o Terapias Lentas.
                     </div>
                   </label>
                 </div>

@@ -1,4 +1,5 @@
 import { supabase } from "../supabaseClient";
+import { normalizeSpecialtyRecords } from "../utils/especialidadesCatalog";
 
 const PROFILE_SELECT = "id, user_id, nombre, correo, rol, servicio, area, cum, activo, avatar_url";
 const ASSIGNMENT_SELECT = "id, profile_id, user_id, especialidad_id, progreso, activo, estado, created_at";
@@ -74,7 +75,7 @@ export async function getRecursos() {
   if (asignacionesError) throw asignacionesError;
   if (especialidadesError) throw especialidadesError;
 
-  const especialidadesById = new Map((especialidades || []).map((item) => [item.id, item]));
+  const especialidadesById = new Map(normalizeSpecialtyRecords(especialidades || []).map((item) => [item.id, item]));
 
   return (profiles || [])
     .filter(isAcademicResource)

@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CalendarDays, Clock } from "lucide-react";
 import { getProximasClasesAcademicas } from "../../services/asistenciaService";
+import { getEspecialidadActivaRecurso } from "../../services/campusContenidoService";
+import { isRecurso } from "../../auth/roles";
 
 function formatDate(value) {
   if (!value) return "Sin fecha";
@@ -14,17 +16,45 @@ function formatDate(value) {
 
 export default function CronogramaAcademico({
   especialidadId = null,
+  session = null,
+  profile = null,
   title = "Cronograma académico",
   onBack = null,
 }) {
   const [clases, setClases] = useState([]);
+  const [resolvedEspecialidad, setResolvedEspecialidad] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const effectiveEspecialidadId = especialidadId || resolvedEspecialidad?.id || null;
+
+  useEffect(() => {
+    let alive = true;
+
+    async function resolveEspecialidad() {
+      if (especialidadId || !isRecurso(profile)) {
+        setResolvedEspecialidad(null);
+        return;
+      }
+
+      try {
+        const { especialidad } = await getEspecialidadActivaRecurso({ profile, session });
+        if (alive) setResolvedEspecialidad(especialidad || null);
+      } catch (loadError) {
+        console.warn("[Campus UCI] No se pudo resolver especialidad del recurso para cronograma:", loadError);
+        if (alive) setResolvedEspecialidad(null);
+      }
+    }
+
+    resolveEspecialidad();
+    return () => {
+      alive = false;
+    };
+  }, [especialidadId, profile, session]);
 
   useEffect(() => {
     loadClases();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [especialidadId]);
+  }, [effectiveEspecialidadId]);
 
   const grouped = useMemo(() => {
     return clases.reduce((acc, clase) => {
@@ -40,7 +70,7 @@ export default function CronogramaAcademico({
     setError("");
 
     try {
-      const data = await getProximasClasesAcademicas(especialidadId);
+      const data = await getProximasClasesAcademicas(effectiveEspecialidadId);
       setClases(data);
     } catch (loadError) {
       console.error("[Campus UCI] Error cargando cronograma:", loadError);

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, CalendarCheck, Clock, FileCheck2, UserX } from "lucide-react";
 import { getResumenAsistencia } from "../../services/asistenciaService";
+import { getEspecialidadActivaRecurso } from "../../services/campusContenidoService";
 
 function formatDate(value) {
   if (!value) return "Sin fecha";
@@ -11,24 +12,33 @@ function formatDate(value) {
   }).format(new Date(`${value}T00:00:00`));
 }
 
-export default function MiAsistencia({ profile = null, especialidad = null, onBack = null }) {
+export default function MiAsistencia({ session = null, profile = null, especialidad = null, onBack = null }) {
+  const [resolvedEspecialidad, setResolvedEspecialidad] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const effectiveEspecialidad = especialidad || resolvedEspecialidad;
 
   useEffect(() => {
     loadAsistencia();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile?.id, especialidad?.id]);
+  }, [profile?.id, effectiveEspecialidad?.id]);
 
   async function loadAsistencia() {
     setLoading(true);
     setError("");
 
     try {
+      let activeEspecialidad = effectiveEspecialidad;
+      if (!activeEspecialidad?.id) {
+        const result = await getEspecialidadActivaRecurso({ profile, session });
+        activeEspecialidad = result.especialidad || null;
+        setResolvedEspecialidad(activeEspecialidad);
+      }
+
       const data = await getResumenAsistencia({
         profileId: profile?.id,
-        especialidadId: especialidad?.id || null,
+        especialidadId: activeEspecialidad?.id || null,
       });
       setSummary(data);
     } catch (loadError) {

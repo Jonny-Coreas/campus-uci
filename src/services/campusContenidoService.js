@@ -1,4 +1,5 @@
 import { supabase } from "../supabaseClient";
+import { normalizeSpecialtyRecord } from "../utils/especialidadesCatalog";
 
 const ASIGNATURAS_TABLE = "especialidad_asignaturas";
 const SECCIONES_TABLE = "especialidad_asignatura_secciones";
@@ -57,7 +58,7 @@ export async function getEspecialidadActivaRecurso({ profile, session }) {
     .maybeSingle();
 
   if (error) throw error;
-  return { asignacion, especialidad: data || null };
+  return { asignacion, especialidad: data ? normalizeSpecialtyRecord(data) : null };
 }
 
 export async function getAsignaturasByEspecialidad(especialidadId, { onlyPublished = true } = {}) {
@@ -105,7 +106,12 @@ export async function getAsignaturaDetalle(asignaturaId, { onlyPublished = true 
   });
 
   return {
-    asignatura,
+    asignatura: {
+      ...asignatura,
+      especialidades: asignatura.especialidades
+        ? normalizeSpecialtyRecord(asignatura.especialidades)
+        : asignatura.especialidades,
+    },
     secciones: seccionesRes.data || [],
     materiales: materialesRes.data || [],
     foros: forosRes.data || [],

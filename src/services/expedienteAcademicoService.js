@@ -1,5 +1,6 @@
 import { supabase } from "../supabaseClient";
 import { getRecursos } from "./recursosAdminService";
+import { normalizeSpecialtyRecord } from "../utils/especialidadesCatalog";
 
 function uniqueById(items) {
   const map = new Map();
@@ -78,7 +79,7 @@ async function getEspecialidad(especialidadId) {
     .maybeSingle();
 
   if (error) throw error;
-  return data || null;
+  return data ? normalizeSpecialtyRecord(data) : null;
 }
 
 async function getTareas(especialidadId) {
@@ -184,7 +185,17 @@ export async function getHistorialAsistencia(profileId, especialidadId = null) {
     return [];
   }
 
-  const rows = data || [];
+  const rows = (data || []).map((item) => ({
+    ...item,
+    clase: item.clase
+      ? {
+          ...item.clase,
+          especialidades: item.clase.especialidades
+            ? normalizeSpecialtyRecord(item.clase.especialidades)
+            : item.clase.especialidades,
+        }
+      : item.clase,
+  }));
   return especialidadId ? rows.filter((item) => item.clase?.especialidad_id === especialidadId) : rows;
 }
 
@@ -307,7 +318,7 @@ export async function getReportesAcademicosData() {
         console.warn("[Campus UCI] No se pudo cargar expediente para reporte:", recurso.id, error);
         return {
           profile: recurso,
-          especialidad: { id: recurso.especialidad_id, nombre: recurso.especialidad_nombre },
+          especialidad: normalizeSpecialtyRecord({ id: recurso.especialidad_id, nombre: recurso.especialidad_nombre }),
           resumen: {
             promedio: null,
             progreso: Number(recurso.progreso || 0),

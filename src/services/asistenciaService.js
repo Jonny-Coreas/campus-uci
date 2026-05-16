@@ -1,6 +1,7 @@
 import { supabase } from "../supabaseClient";
 import { getExpedientesByEspecialidad } from "./especialidadService";
 import { normalizeRole } from "../auth/roles";
+import { normalizeSpecialtyRecord } from "../utils/especialidadesCatalog";
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
@@ -25,7 +26,10 @@ export async function getClasesAcademicas(especialidadId = null) {
 
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  return (data || []).map((item) => ({
+    ...item,
+    especialidades: item.especialidades ? normalizeSpecialtyRecord(item.especialidades) : item.especialidades,
+  }));
 }
 
 export async function getProximasClasesAcademicas(especialidadId = null) {
@@ -48,7 +52,10 @@ export async function getProximasClasesAcademicas(especialidadId = null) {
 
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  return (data || []).map((item) => ({
+    ...item,
+    especialidades: item.especialidades ? normalizeSpecialtyRecord(item.especialidades) : item.especialidades,
+  }));
 }
 
 export async function getAsistenciaByClase(claseId) {
@@ -164,7 +171,17 @@ export async function getAsistenciaRecurso({ profileId, especialidadId = null })
 
   if (error) throw error;
 
-  const rows = data || [];
+  const rows = (data || []).map((item) => ({
+    ...item,
+    clase: item.clase
+      ? {
+          ...item.clase,
+          especialidades: item.clase.especialidades
+            ? normalizeSpecialtyRecord(item.clase.especialidades)
+            : item.clase.especialidades,
+        }
+      : item.clase,
+  }));
   return especialidadId
     ? rows.filter((item) => item.clase?.especialidad_id === especialidadId)
     : rows;

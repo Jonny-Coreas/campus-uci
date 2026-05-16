@@ -1,4 +1,5 @@
 import { supabase } from "../supabaseClient";
+import { normalizeSpecialtyRecord } from "../utils/especialidadesCatalog";
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
@@ -89,7 +90,7 @@ async function getEspecialidad(especialidadId) {
     .maybeSingle();
 
   if (error) throw error;
-  return data || null;
+  return data ? normalizeSpecialtyRecord(data) : null;
 }
 
 async function getClases(especialidadId) {

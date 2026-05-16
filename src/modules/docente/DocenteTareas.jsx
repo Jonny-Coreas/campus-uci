@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ClipboardList, Save } from "lucide-react";
 import { createTarea } from "../../services/clasesTareasService";
 import { getEspecialidadesPermitidas } from "../../services/docenteService";
@@ -26,11 +26,6 @@ export default function DocenteTareas({
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-
-  const selectedAsignatura = useMemo(
-    () => asignaturas.find((item) => item.id === form.asignaturaId) || null,
-    [asignaturas, form.asignaturaId],
-  );
 
   useEffect(() => {
     let alive = true;

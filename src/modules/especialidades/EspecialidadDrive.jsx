@@ -34,7 +34,7 @@ const MOCK_RESOURCES = [
     cum: "UCI-001",
     rol: "Estudiante",
     servicio: "UCI",
-    area: "Hemodiálisis",
+    area: "Terapias Lentas",
   },
   {
     id: "mock-recurso-2",
@@ -44,7 +44,7 @@ const MOCK_RESOURCES = [
     cum: "UCI-002",
     rol: "Estudiante",
     servicio: "UCI",
-    area: "Hemodiálisis",
+    area: "Terapias Lentas",
   },
   {
     id: "mock-recurso-3",
@@ -54,7 +54,7 @@ const MOCK_RESOURCES = [
     cum: "UCI-003",
     rol: "Estudiante",
     servicio: "UCI",
-    area: "Hemodiálisis",
+    area: "Terapias Lentas",
   },
 ];
 
@@ -689,7 +689,7 @@ function AddResourceModal({
               disabled={saving}
               value={form.area}
               onChange={(event) => onChange("area", event.target.value)}
-              placeholder="UCI / Hemodiálisis"
+              placeholder="UCI / Terapias Lentas"
             />
           </label>
 
@@ -1132,7 +1132,7 @@ export default function EspecialidadDrive({
           <section className="drive-summary-card" aria-label="Resumen de especialidad">
             <div className="drive-summary-title">
               <span>Especialidad</span>
-              <strong>{especialidad?.nombre || "Hemodiálisis"}</strong>
+              <strong>{especialidad?.nombre || "Terapias Lentas"}</strong>
               <p>
                 {especialidad?.descripcion ||
                   "Organización académica por datos generales y expedientes individuales."}
