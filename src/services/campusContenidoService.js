@@ -1,5 +1,6 @@
 import { supabase } from "../supabaseClient";
 import { normalizeSpecialtyRecord } from "../utils/especialidadesCatalog";
+import { getCronogramaClases } from "./cronogramaService";
 
 const ASIGNATURAS_TABLE = "especialidad_asignaturas";
 const SECCIONES_TABLE = "especialidad_asignatura_secciones";
@@ -98,10 +99,10 @@ export async function getAsignaturaDetalle(asignaturaId, { onlyPublished = true 
     filterPublished(supabase.from(FOROS_TABLE).select("*").eq("asignatura_id", asignaturaId)).order("orden", { ascending: true }),
     filterPublished(supabase.from(AVISOS_TABLE).select("*").eq("asignatura_id", asignaturaId)).order("orden", { ascending: true }),
     supabase.from("especialidad_tareas").select("*").eq("especialidad_id", asignatura.especialidad_id).order("fecha_limite", { ascending: true }),
-    supabase.from("especialidad_clases_virtuales").select("*").eq("especialidad_id", asignatura.especialidad_id).order("fecha", { ascending: true }),
+    getCronogramaClases(asignatura.especialidad_id),
   ]);
 
-  [seccionesRes, materialesRes, forosRes, avisosRes, tareasRes, clasesRes].forEach((result) => {
+  [seccionesRes, materialesRes, forosRes, avisosRes, tareasRes].forEach((result) => {
     if (result.error) throw result.error;
   });
 
@@ -117,7 +118,7 @@ export async function getAsignaturaDetalle(asignaturaId, { onlyPublished = true 
     foros: forosRes.data || [],
     avisos: avisosRes.data || [],
     tareas: tareasRes.data || [],
-    clases: clasesRes.data || [],
+    clases: clasesRes || [],
   };
 }
 

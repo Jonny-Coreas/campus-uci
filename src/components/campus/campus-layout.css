@@ -1,8 +1,9 @@
 .campus-layout {
   min-height: 100vh;
-  width: 100%;
+  width: 100vw;
+  max-width: 100vw;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 88px minmax(0, 1fr);
   overflow-x: hidden;
   background: #f3f7fb;
   color: #16304f;
@@ -14,20 +15,35 @@
   left: 0;
   bottom: 0;
   z-index: 50;
-  width: 280px;
-  min-width: 280px;
-  max-width: 280px;
+  width: 88px;
+  min-width: 88px;
+  max-width: 88px;
   min-height: 100dvh;
   height: 100dvh;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   overflow-y: auto;
   overflow-x: hidden;
   border-right: 6px solid #2f7df4;
   background: linear-gradient(180deg, #062b70 0%, #073985 48%, #08265f 100%);
-  padding: 22px 18px;
+  padding: 20px 12px;
   box-shadow: 12px 0 34px rgba(7, 25, 66, 0.16);
+  transition:
+    width 220ms ease,
+    min-width 220ms ease,
+    max-width 220ms ease,
+    padding 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.campus-sidebar:hover,
+.campus-sidebar:focus-within {
+  width: 290px;
+  min-width: 290px;
+  max-width: 290px;
+  padding: 22px 18px;
+  box-shadow: 18px 0 46px rgba(7, 25, 66, 0.24);
 }
 
 .campus-profile {
@@ -37,7 +53,8 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  padding: 4px 8px 14px;
+  min-height: 78px;
+  padding: 0 0 12px;
   box-shadow: none;
 }
 
@@ -60,6 +77,34 @@
 .campus-profile small {
   display: block;
   overflow-wrap: anywhere;
+}
+
+.campus-profile strong,
+.campus-profile span,
+.campus-profile small,
+.campus-menu button > span:not(.campus-menu-icon),
+.campus-logout > span:not(.campus-menu-icon) {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  transition:
+    opacity 180ms ease,
+    max-width 220ms ease;
+}
+
+.campus-sidebar:hover .campus-profile strong,
+.campus-sidebar:hover .campus-profile span,
+.campus-sidebar:hover .campus-profile small,
+.campus-sidebar:hover .campus-menu button > span:not(.campus-menu-icon),
+.campus-sidebar:hover .campus-logout > span:not(.campus-menu-icon),
+.campus-sidebar:focus-within .campus-profile strong,
+.campus-sidebar:focus-within .campus-profile span,
+.campus-sidebar:focus-within .campus-profile small,
+.campus-sidebar:focus-within .campus-menu button > span:not(.campus-menu-icon),
+.campus-sidebar:focus-within .campus-logout > span:not(.campus-menu-icon) {
+  max-width: 190px;
+  opacity: 1;
 }
 
 .campus-profile strong {
@@ -97,20 +142,22 @@
 
 .campus-menu button,
 .campus-logout {
+  position: relative;
   width: 100%;
   min-height: 48px;
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
   border: 1px solid transparent;
   border-radius: 14px;
   background: transparent;
   color: #d8e6ff;
-  padding: 7px 10px;
+  padding: 7px 9px;
   text-align: left;
   font-size: 12.5px;
   font-weight: 900;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
 .campus-menu button.active,
@@ -119,10 +166,16 @@
   border-color: rgba(191, 219, 254, 0.36);
   background: rgba(96, 165, 250, 0.22);
   color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 12px 24px rgba(37, 99, 235, .14);
+  transform: translateX(1px);
+}
+
+.campus-menu button.active {
+  box-shadow: inset 4px 0 0 #93c5fd, 0 14px 28px rgba(37, 99, 235, .2);
 }
 
 .campus-menu-icon {
-  width: 40px;
+  width: 44px;
   height: 40px;
   display: grid;
   place-items: center;
@@ -142,6 +195,39 @@
 .campus-menu button:hover .campus-menu-icon,
 .campus-logout:hover .campus-menu-icon {
   background: rgba(219, 234, 254, 0.2);
+}
+
+.campus-menu button::after {
+  content: attr(data-tooltip);
+  position: fixed;
+  left: 76px;
+  z-index: 120;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(191, 219, 254, .24);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, .94);
+  color: #ffffff;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-2px);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.campus-menu button:hover::after,
+.campus-menu button:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.campus-sidebar:hover .campus-menu button::after,
+.campus-sidebar:focus-within .campus-menu button::after {
+  display: none;
 }
 
 .campus-logout {
@@ -326,14 +412,14 @@
 
 @media (max-width: 1250px) {
   .campus-sidebar {
-    width: 280px;
-    min-width: 280px;
-    max-width: 280px;
-    padding: 22px 18px;
+    width: 88px;
+    min-width: 88px;
+    max-width: 88px;
+    padding: 20px 12px;
   }
 
   .campus-profile {
-    padding: 4px 8px 14px;
+    padding: 0 0 12px;
   }
 
   .campus-profile-photo {
@@ -351,9 +437,9 @@
 
   .campus-menu button,
   .campus-logout {
-    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-columns: 44px minmax(0, 1fr);
     justify-items: stretch;
-    padding: 7px 10px;
+    padding: 7px 9px;
   }
 
   .campus-right-column {

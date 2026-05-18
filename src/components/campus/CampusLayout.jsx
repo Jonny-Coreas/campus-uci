@@ -73,6 +73,8 @@ export default function CampusLayout({
   onAvatarUpdated,
   children,
   rightPanel,
+  enableFloatingPanel = false,
+  layoutVariant = "",
   footer = null,
 }) {
   const normalizedMenuItems = menuItems.map((item) => (
@@ -80,7 +82,7 @@ export default function CampusLayout({
   ));
 
   return (
-    <div className="campus-layout dashboard-shell">
+    <div className={`campus-layout dashboard-shell ${layoutVariant}`.trim()}>
       <aside className="campus-sidebar sidebar" aria-label="Navegación Campus UCI">
         <div className="campus-profile">
           <AvatarUpload
@@ -105,6 +107,8 @@ export default function CampusLayout({
                 item.onClick?.();
                 onMenuSelect?.(item.label);
               }}
+              aria-label={item.label}
+              data-tooltip={item.label}
             >
               <span className="campus-menu-icon" aria-hidden="true">
                 <CampusMenuIcon label={item.label} icon={item.icon} />
@@ -163,7 +167,7 @@ export default function CampusLayout({
         </footer>
       </div>
 
-      {rightPanel ? (
+      {enableFloatingPanel && rightPanel ? (
         <aside className="right-hover-zone" aria-label="Panel académico">
           <div className="right-hover-tab" aria-hidden="true">
             Panel académico

@@ -12,6 +12,15 @@ function formatDate(value) {
   }).format(new Date(`${value}T00:00:00`));
 }
 
+function attendanceLabel(value) {
+  const estado = String(value || "").toLowerCase();
+  if (estado === "asistio" || estado === "asistió" || estado === "presente") return "Presente";
+  if (estado === "tardia" || estado === "tardanza") return "Tardanza";
+  if (estado === "ausente") return "Ausente";
+  if (estado === "justificada" || estado === "justificado") return "Justificado";
+  return value || "Sin estado";
+}
+
 export default function MiAsistencia({ session = null, profile = null, especialidad = null, onBack = null }) {
   const [resolvedEspecialidad, setResolvedEspecialidad] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -38,6 +47,8 @@ export default function MiAsistencia({ session = null, profile = null, especiali
 
       const data = await getResumenAsistencia({
         profileId: profile?.id,
+        profile,
+        session,
         especialidadId: activeEspecialidad?.id || null,
       });
       setSummary(data);
@@ -113,7 +124,7 @@ export default function MiAsistencia({ session = null, profile = null, especiali
                     <small>{formatDate(item.clase?.fecha)} · {item.clase?.hora_inicio} - {item.clase?.hora_fin}</small>
                     <p>{item.comentario || item.clase?.especialidades?.nombre || "Campus UCI"}</p>
                   </div>
-                  <span className={`attendance-badge ${item.estado}`}>{item.estado}</span>
+                  <span className={`attendance-badge ${item.estado}`}>{attendanceLabel(item.estado)}</span>
                 </div>
               </article>
             ))}

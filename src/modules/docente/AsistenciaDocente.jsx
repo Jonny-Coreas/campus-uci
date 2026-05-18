@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarDays, Save } from "lucide-react";
+import { ArrowLeft, CalendarDays, Clock, MapPin, Save } from "lucide-react";
 import {
   getAsistenciaByClase,
-  getProximasClasesAcademicas,
+  getClasesAcademicas,
   getRecursosAsistenciaByClase,
   registrarAsistencia,
 } from "../../services/asistenciaService";
@@ -10,9 +10,9 @@ import { getEspecialidadesPermitidas } from "../../services/docenteService";
 import { buildDraftKey, useLocalDraft } from "../../hooks/useLocalDraft";
 
 const ESTADOS = [
-  { value: "asistio", label: "Asistió" },
-  { value: "tardia", label: "Tardía" },
+  { value: "asistio", label: "Presente" },
   { value: "ausente", label: "Ausente" },
+  { value: "tardia", label: "Tardanza" },
   { value: "justificada", label: "Justificada" },
 ];
 
@@ -23,6 +23,16 @@ function formatDate(value) {
     month: "short",
     year: "numeric",
   }).format(new Date(`${value}T00:00:00`));
+}
+
+function formatClassOption(clase) {
+  return [
+    formatDate(clase.fecha),
+    clase.titulo || clase.tema || "Clase",
+    clase.especialidades?.nombre || "Especialidad",
+    clase.modalidad || "Modalidad",
+    `${clase.hora_inicio || "--:--"}${clase.hora_fin ? ` - ${clase.hora_fin}` : ""}`,
+  ].join(" · ");
 }
 
 function isAsistenciaDraftEmpty(value) {
@@ -95,7 +105,7 @@ export default function AsistenciaDocente({ profile = null, especialidades = [],
         return;
       }
 
-      const data = await getProximasClasesAcademicas(especialidadId);
+      const data = await getClasesAcademicas(especialidadId);
       setClases(data);
       setSelectedClaseId((current) => (data.some((clase) => clase.id === current) ? current : data?.[0]?.id || ""));
     } catch (error) {
@@ -166,8 +176,11 @@ export default function AsistenciaDocente({ profile = null, especialidades = [],
           return registrarAsistencia({
             claseId: selectedClaseId,
             profileId,
+            especialidadId: selectedClase?.especialidad_id || especialidadId,
             estado: current.estado,
             comentario: current.comentario,
+            clase: selectedClase,
+            registradoPor: profile?.id || profile?.user_id || null,
           });
         }),
       );
@@ -236,12 +249,27 @@ export default function AsistenciaDocente({ profile = null, especialidades = [],
               <option value="">{loading ? "Cargando clases..." : "Seleccionar clase"}</option>
               {clases.map((clase) => (
                 <option key={clase.id} value={clase.id}>
-                  {formatDate(clase.fecha)} · {clase.titulo} · {clase.especialidades?.nombre || "Especialidad"}
+                  {formatClassOption(clase)}
                 </option>
               ))}
             </select>
           </label>
         </div>
+
+        {selectedClase ? (
+          <article className="attendance-class-summary">
+            <div>
+              <span>Clase seleccionada</span>
+              <h3>{selectedClase.titulo || selectedClase.tema || "Clase académica"}</h3>
+              <p>{selectedClase.contenido || selectedClase.descripcion || "Sin temario adicional."}</p>
+            </div>
+            <div className="attendance-class-meta">
+              <small><CalendarDays size={14} /> {formatDate(selectedClase.fecha)}</small>
+              <small><Clock size={14} /> {selectedClase.hora_inicio || "--:--"} {selectedClase.hora_fin ? `- ${selectedClase.hora_fin}` : ""}</small>
+              <small><MapPin size={14} /> {selectedClase.especialidades?.nombre || "Especialidad"} · {selectedClase.modalidad || "Modalidad"}</small>
+            </div>
+          </article>
+        ) : null}
 
         {loading ? <div className="cu-empty">Cargando asistencia...</div> : null}
 
@@ -256,6 +284,7 @@ export default function AsistenciaDocente({ profile = null, especialidades = [],
                 <thead>
                   <tr>
                     <th>Recurso</th>
+                    <th>Especialidad</th>
                     <th>CUM</th>
                     <th>Estado</th>
                     <th>Comentario</th>
@@ -268,6 +297,7 @@ export default function AsistenciaDocente({ profile = null, especialidades = [],
                     return (
                       <tr key={profileId}>
                         <td><strong>{recurso.nombre}</strong><span>{recurso.correo || "Sin correo"}</span></td>
+                        <td>{recurso.especialidad_nombre || selectedClase?.especialidades?.nombre || "Especialidad"}</td>
                         <td>{recurso.cum || "Sin CUM"}</td>
                         <td>
                           <select value={current.estado} onChange={(event) => setAsistencia(profileId, "estado", event.target.value)}>

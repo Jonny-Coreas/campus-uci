@@ -1,5 +1,6 @@
 import { supabase } from "../supabaseClient";
 import { normalizeSpecialtyRecord } from "../utils/especialidadesCatalog";
+import { getCronogramaClases } from "./cronogramaService";
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10);
@@ -96,15 +97,7 @@ async function getEspecialidad(especialidadId) {
 async function getClases(especialidadId) {
   if (!especialidadId) return [];
 
-  const { data, error } = await supabase
-    .from("especialidad_clases_virtuales")
-    .select("*")
-    .eq("especialidad_id", especialidadId)
-    .gte("fecha", todayDate())
-    .order("fecha", { ascending: true })
-    .order("hora_inicio", { ascending: true });
-
-  if (error) throw error;
+  const data = await getCronogramaClases(especialidadId, { upcomingOnly: true });
   return (data || []).filter(isUpcomingClass);
 }
 
