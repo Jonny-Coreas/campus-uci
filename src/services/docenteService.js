@@ -1,11 +1,26 @@
-import { supabase } from "../supabaseClient";
+import { supabase, supabaseUrl } from "../supabaseClient";
 import { getExpedientesByEspecialidad } from "./especialidadService";
 import { reviewEntregaTarea } from "./clasesTareasService";
 import { isAdminOrJefe, isDocente, normalizeRole } from "../auth/roles";
 import { normalizeSpecialtyRecords } from "../utils/especialidadesCatalog";
 import { getCronogramaClases } from "./cronogramaService";
 
-const ASISTENCIA_TABLE = "inasistencia_registros";
+const ASISTENCIA_TABLE = "especialidad_asistencia";
+
+async function selectAsistenciaRows() {
+  const { data, error } = await supabase
+    .from(ASISTENCIA_TABLE)
+    .select("*");
+
+  if (error) {
+    console.warn(`[Campus UCI] No se pudo cargar ${ASISTENCIA_TABLE}:`, error);
+    console.error("[Campus UCI] VITE_SUPABASE_URL activo:", supabaseUrl);
+    console.error("[Campus UCI] Tabla solicitada exactamente:", ASISTENCIA_TABLE);
+    return [];
+  }
+
+  return data || [];
+}
 
 function estadoFromNota(nota) {
   return Number(nota) >= 7 ? "Aprobado" : "Reprobado";
@@ -171,35 +186,11 @@ async function getAsistenciaPanel(clases = []) {
   const claseIds = clases.map((item) => item.id).filter(Boolean);
   if (!claseIds.length) return [];
 
-  const byCronogramaId = await supabase
-    .from(ASISTENCIA_TABLE)
-    .select("*")
-    .in("cronograma_id", claseIds)
-    .order("created_at", { ascending: false });
-
-  if (!byCronogramaId.error) {
-    return (byCronogramaId.data || []).map((item) => ({
-      ...item,
-      profile_id: item.profile_id || item.recurso_id,
-      clase_id: item.clase_id || item.cronograma_id,
-      comentario: item.comentario || item.observaciones || "",
-    }));
-  }
-
-  console.warn("[Campus UCI] No se pudo cargar asistencia por cronograma_id para panel docente; intentando clase_id:", byCronogramaId.error);
-
-  const byClaseId = await supabase
-    .from(ASISTENCIA_TABLE)
-    .select("*")
-    .in("clase_id", claseIds)
-    .order("created_at", { ascending: false });
-
-  if (byClaseId.error) {
-    console.warn("[Campus UCI] No se pudo cargar asistencia para panel docente:", byClaseId.error);
-    return [];
-  }
-
-  return (byClaseId.data || []).map((item) => ({
+  const rows = await selectAsistenciaRows();
+  return rows.filter((item) =>
+    claseIds.includes(item.cronograma_id)
+    || claseIds.includes(item.clase_id),
+  ).map((item) => ({
     ...item,
     profile_id: item.profile_id || item.recurso_id,
     clase_id: item.clase_id || item.cronograma_id,
@@ -472,28 +463,17 @@ export async function updateAsistenciaDocente({ id, claseId, estado, comentario,
     .from(ASISTENCIA_TABLE)
     .update({
       estado,
-      observaciones: comentario?.trim() || null,
+      comentario: comentario?.trim() || null,
     })
     .eq("id", id)
-    .eq("cronograma_id", claseId)
     .select("*")
     .single();
 
   if (!result.error) return result.data;
-
-  const fallback = await supabase
-    .from(ASISTENCIA_TABLE)
-    .update({
-      estado,
-      observaciones: comentario?.trim() || null,
-    })
-    .eq("id", id)
-    .eq("clase_id", claseId)
-    .select("*")
-    .single();
-
-  if (fallback.error) throw result.error;
-  return fallback.data;
+  console.error(`[Campus UCI] Error actualizando ${ASISTENCIA_TABLE}:`, result.error);
+  console.error("[Campus UCI] VITE_SUPABASE_URL activo:", supabaseUrl);
+  console.error("[Campus UCI] Tabla solicitada exactamente:", ASISTENCIA_TABLE);
+  throw result.error;
 }
 
 export async function getRecursosEvaluacion(especialidadId) {

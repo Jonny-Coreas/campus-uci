@@ -1,10 +1,16 @@
-import { supabase } from "../supabaseClient";
+import { supabase, supabaseUrl } from "../supabaseClient";
 import { getExpedientesByEspecialidad } from "./especialidadService";
 import { normalizeRole } from "../auth/roles";
 import { normalizeSpecialtyRecord } from "../utils/especialidadesCatalog";
 import { getCronogramaClases } from "./cronogramaService";
 
-const ASISTENCIA_TABLE = "inasistencia_registros";
+const ASISTENCIA_TABLE = "especialidad_asistencia";
+
+function logAsistenciaTableError(context, error) {
+  console.error(`[Campus UCI] Error ${context} en ${ASISTENCIA_TABLE}:`, error);
+  console.error("[Campus UCI] VITE_SUPABASE_URL activo:", supabaseUrl);
+  console.error("[Campus UCI] Tabla solicitada exactamente:", ASISTENCIA_TABLE);
+}
 
 export async function getClasesAcademicas(especialidadId = null) {
   return getCronogramaClases(especialidadId);
@@ -12,6 +18,18 @@ export async function getClasesAcademicas(especialidadId = null) {
 
 export async function getProximasClasesAcademicas(especialidadId = null) {
   return getCronogramaClases(especialidadId, { upcomingOnly: true });
+}
+
+async function selectAsistenciaRows() {
+  const { data, error } = await supabase
+    .from(ASISTENCIA_TABLE)
+    .select("*");
+
+  if (error) {
+    logAsistenciaTableError("leyendo asistencia", error);
+    throw error;
+  }
+  return data || [];
 }
 
 function normalizeAttendanceRow(item = {}) {
@@ -35,24 +53,10 @@ function normalizeAttendanceRow(item = {}) {
 export async function getAsistenciaByClase(claseId) {
   if (!claseId) return [];
 
-  const byCronogramaId = await supabase
-    .from(ASISTENCIA_TABLE)
-    .select("*")
-    .eq("cronograma_id", claseId)
-    .order("created_at", { ascending: true });
-
-  if (!byCronogramaId.error) return (byCronogramaId.data || []).map(normalizeAttendanceRow);
-
-  console.warn("[Campus UCI] No se pudo cargar asistencia por cronograma_id; intentando clase_id:", byCronogramaId.error);
-
-  const byClaseId = await supabase
-    .from(ASISTENCIA_TABLE)
-    .select("*")
-    .eq("clase_id", claseId)
-    .order("created_at", { ascending: true });
-
-  if (byClaseId.error) throw byCronogramaId.error;
-  return (byClaseId.data || []).map(normalizeAttendanceRow);
+  const rows = await selectAsistenciaRows();
+  return rows
+    .filter((item) => item.cronograma_id === claseId || item.clase_id === claseId)
+    .map(normalizeAttendanceRow);
 }
 
 export async function registrarAsistencia({
@@ -67,41 +71,38 @@ export async function registrarAsistencia({
   if (!claseId) throw new Error("Seleccioná una clase.");
   if (!profileId) throw new Error("Falta profile_id del recurso.");
 
+  void especialidadId;
+  void clase;
+  void registradoPor;
+
   const payload = {
-    especialidad_id: especialidadId,
-    recurso_id: profileId,
-    cronograma_id: claseId,
-    fecha: clase?.fecha || null,
-    actividad: clase?.titulo || clase?.tema || "Clase académica",
-    tipo: clase?.actividad || "Clase",
-    modalidad: clase?.modalidad || "Académica",
+    clase_id: claseId,
+    profile_id: profileId,
     estado,
-    observaciones: comentario?.trim() || null,
-    registrado_por: registradoPor || null,
+    comentario: comentario?.trim() || null,
   };
 
   const existing = await supabase
     .from(ASISTENCIA_TABLE)
-    .select("id")
-    .eq("cronograma_id", claseId)
-    .eq("recurso_id", profileId)
-    .maybeSingle();
+    .select("*");
 
-  if (existing.error) throw existing.error;
+  if (existing.error) {
+    logAsistenciaTableError("buscando registro existente", existing.error);
+    throw existing.error;
+  }
+  const existingRow = (existing.data || []).find((item) =>
+    (item.cronograma_id === claseId || item.clase_id === claseId)
+    && (item.recurso_id === profileId || item.profile_id === profileId),
+  );
 
-  let fallback = existing.data?.id
-    ? await supabase.from(ASISTENCIA_TABLE).update(payload).eq("id", existing.data.id).select("*").single()
+  let fallback = existingRow?.id
+    ? await supabase.from(ASISTENCIA_TABLE).update(payload).eq("id", existingRow.id).select("*").single()
     : await supabase.from(ASISTENCIA_TABLE).insert(payload).select("*").single();
 
-  if (fallback.error && /registrado_por|schema cache/i.test(fallback.error.message || "")) {
-    const compatiblePayload = { ...payload };
-    delete compatiblePayload.registrado_por;
-    fallback = existing.data?.id
-      ? await supabase.from(ASISTENCIA_TABLE).update(compatiblePayload).eq("id", existing.data.id).select("*").single()
-      : await supabase.from(ASISTENCIA_TABLE).insert(compatiblePayload).select("*").single();
+  if (fallback.error) {
+    logAsistenciaTableError("guardando asistencia", fallback.error);
+    throw fallback.error;
   }
-
-  if (fallback.error) throw fallback.error;
   return fallback.data;
 }
 
@@ -112,13 +113,16 @@ export async function updateAsistencia(id, payload) {
     .from(ASISTENCIA_TABLE)
     .update({
       estado: payload.estado,
-      observaciones: payload.comentario?.trim() || null,
+      comentario: payload.comentario?.trim() || null,
     })
     .eq("id", id)
     .select("*")
     .single();
 
-  if (error) throw error;
+  if (error) {
+    logAsistenciaTableError("actualizando asistencia", error);
+    throw error;
+  }
   return data;
 }
 
@@ -160,23 +164,6 @@ function dedupeAttendance(rows = []) {
     map.set(key, row);
   });
   return [...map.values()];
-}
-
-async function safeAttendanceQuery(column, value) {
-  if (!value) return [];
-
-  const { data, error } = await supabase
-    .from(ASISTENCIA_TABLE)
-    .select("*")
-    .eq(column, value)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.warn(`[Campus UCI] No se pudo cargar asistencia por ${column}:`, error);
-    return [];
-  }
-
-  return data || [];
 }
 
 async function enrichWithCronograma(rows = [], especialidadId = null) {
@@ -224,14 +211,13 @@ export async function getAsistenciaRecurso({ profileId, profile = null, session 
 
   if (!identifiers.length) return [];
 
-  const results = await Promise.all(
-    identifiers.flatMap((id) => [
-      safeAttendanceQuery("profile_id", id),
-      safeAttendanceQuery("recurso_id", id),
-    ]),
+  const allRows = await selectAsistenciaRows();
+  const results = allRows.filter((item) =>
+    identifiers.includes(item.recurso_id)
+    || identifiers.includes(item.profile_id),
   );
 
-  const baseRows = dedupeAttendance(results.flat()).map((item) => ({
+  const baseRows = dedupeAttendance(results).map((item) => ({
     ...normalizeAttendanceRow(item),
     clase: item.clase
       ? {
